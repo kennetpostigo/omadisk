@@ -249,7 +249,8 @@ Item {
       }
       return
     }
-    if (ev.path === root.scanRoot && root.focusPath !== root.scanRoot) {
+    if (ev.path === root.scanRoot && root.focusPath !== root.scanRoot
+        && !root.scanning && !root.deeperPending) {
       root.focusPath = root.scanRoot
       root.error = ""
       root.offerHome = false
