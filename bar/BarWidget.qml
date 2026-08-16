@@ -4,10 +4,12 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
+import "../overlay" as Disk
 
-BarWidget {
+Panel {
   id: root
   moduleName: "postman.omadisk"
+  ipcTarget: "postman.omadisk"
 
   property var stat: null
 
@@ -27,21 +29,21 @@ BarWidget {
     statProc.running = true
   }
 
-  function summonOverlay() {
-    var payload = JSON.stringify({ root: chipRoot() })
-    if (root.bar && root.bar.shell && typeof root.bar.shell.summon === "function")
-      root.bar.shell.summon("postman.omadisk", payload)
-  }
-
   readonly property bool showFree: setting("showFree", true)
   readonly property int refreshSec: Math.max(10, Number(setting("refreshIntervalSec", 30)) || 30)
   readonly property string label: Model.chipText(stat, showFree, vertical)
   readonly property bool diskUrgent: Model.urgent(stat)
+  readonly property bool vertical: bar ? bar.vertical : false
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
   Component.onCompleted: refresh()
+
+  onOpenedChanged: {
+    if (opened)
+      explorer.startSession("{}")
+  }
 
   Timer {
     interval: root.refreshSec * 1000
@@ -70,7 +72,48 @@ BarWidget {
     foreground: root.diskUrgent ? Color.urgent : (bar ? bar.barForeground : Color.foreground)
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.refresh()
-      else root.summonOverlay()
+      else if (root.opened) root.close()
+      else root.open()
+    }
+  }
+
+  KeyboardPanel {
+    id: panel
+    anchorItem: button
+    owner: root
+    bar: root.bar
+    open: root.opened
+    focusTarget: keyCatcher
+    contentWidth: panel.fittedContentWidth(Style.space(680))
+    contentHeight: panel.cappedContentHeight(Style.space(460))
+
+    PanelKeyCatcher {
+      id: keyCatcher
+      anchors.fill: parent
+      onMoveRequested: function(dx, dy) {
+        if (dy !== 0) explorer.moveSelection(dy)
+        else if (dx > 0) explorer.activateSelected()
+        else if (dx < 0) explorer.goUp()
+      }
+      onActivateRequested: explorer.activateSelected()
+      onCloseRequested: {
+        if (explorer.focusPath !== explorer.scanRoot) explorer.goUp()
+        else root.close()
+      }
+      onTabRequested: function(direction) { root.switchPanel(direction) }
+      onTextKey: function(t) {
+        if (t === "r" || t === "R") explorer.startScan({ cancelLive: true })
+        else if (t === "o" || t === "O") explorer.openFocus()
+        else if (t === "y" || t === "Y") explorer.copyFocus()
+      }
+
+      Disk.Overlay {
+        id: explorer
+        anchors.fill: parent
+        opened: root.opened
+        panelOwner: root
+        bar: root.bar
+      }
     }
   }
 }

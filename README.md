@@ -1,6 +1,6 @@
 # Omadisk
 
-DaisyDisk-like disk-usage explorer for [Omarchy](https://omarchy.org) — a themed overlay (sunburst + child list + breadcrumbs) plus an optional used/free bar chip.
+DaisyDisk-like disk-usage explorer for [Omarchy](https://omarchy.org) — a used/free bar chip whose panel peeks out from the bar (same chrome as Network and Display).
 
 Plugin id: `postman.omadisk`. The overlay never walks the filesystem; a Rust scanner child streams a capped NDJSON view.
 
@@ -31,28 +31,28 @@ mise install && ./scripts/build.sh
 omarchy plugin add . --enable --yes
 ```
 
-Enable quirk: a plugin with both `overlay` and `bar-widget` is placed on the bar. If you already enabled an overlay-only copy, a second enable will not insert the chip:
+The plugin is a `bar-widget`. Enable it onto the bar (right section by default):
 
 ```bash
-omarchy plugin disable postman.omadisk
 omarchy plugin enable postman.omadisk --section right
 ```
 
-## Summon
+## Open
+
+Click the **Disk space** chip — the explorer peeks out under the bar, like Network or Display.
 
 ```bash
-omarchy-shell shell summon postman.omadisk '{}'
-omarchy-shell shell summon postman.omadisk '{"root":"/var"}'
-omarchy-shell shell toggle postman.omadisk '{}'
+omarchy-shell shell toggle postman.omadisk
+omarchy-shell shell summon postman.omadisk
 ```
 
-Also: Omarchy menu → Trigger → Disk Usage (after `install-menu.sh`), or left-click the bar chip.
+Also: Omarchy menu → Trigger → Disk Usage (after `install-menu.sh`).
 
-Optional Super bind (user file only — check `omarchy menu keybindings --print` first; do not use Super+Shift+D, that is Docker):
+Optional Super bind (user file only — check `omarchy menu keybindings --print` first; Super+Shift+D is Docker):
 
 ```lua
 -- ~/.config/hypr/bindings.lua
-o.bind("SUPER + SHIFT + U", "Omadisk", "omarchy-shell shell toggle postman.omadisk '{}'")
+o.bind("SUPER + SHIFT + U", "Omadisk", "omarchy-shell shell toggle postman.omadisk")
 ```
 
 ## Keyboard

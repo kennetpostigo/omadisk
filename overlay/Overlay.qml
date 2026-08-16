@@ -1,6 +1,5 @@
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import QtQuick
 import qs.Commons
 import qs.Ui
@@ -10,7 +9,8 @@ import "Format.js" as Format
 Item {
   id: root
 
-  property var shell: null
+  property var panelOwner: null
+  property var bar: null
   property var manifest: null
   property bool opened: false
 
@@ -45,18 +45,9 @@ Item {
   property real sunburstFade: 1
   property real cacheFinishedAt: 0
 
-  readonly property color background: Color.menu.background
-  readonly property color foreground: Color.menu.text
-  readonly property color border: Color.menu.border
-  readonly property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  readonly property color scrim: Color.menu.scrim
-  readonly property color selectedBackground: Color.menu.selectedBackground
-  readonly property color selectedText: Color.menu.selectedText
-  readonly property int cornerRadius: Style.cornerRadius
-  readonly property string fontFamily: Style.font.menuFamily
-  readonly property int contentMargin: Style.spacing.panelPadding
-  readonly property int cardWidth: Math.min(Style.space(980), panel.width - Style.gapsOut * 2)
-  readonly property int cardHeight: Math.min(Style.space(640), panel.height - Style.gapsOut * 2)
+  readonly property color foreground: bar ? bar.foreground : Color.popups.text
+  readonly property color selectedBackground: Style.hoverFillFor(foreground, Color.accent)
+  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property bool hoverHasSlice: Model.hasSlicePath(sliceModel, hoverPath)
   readonly property bool hoverIsListRow: Model.isListRowPath(listRows, hoverPath)
 
@@ -79,6 +70,14 @@ Item {
       return String(dir).replace(/\/$/, "") + "/target/release/omadisk-scan"
     var url = String(Qt.resolvedUrl("../target/release/omadisk-scan"))
     return url.replace(/^file:\/\//, "")
+  }
+
+  function configuredRoot() {
+    if (root.panelOwner && typeof root.panelOwner.setting === "function") {
+      var configured = root.panelOwner.setting("root", "")
+      if (configured && String(configured).length > 0) return String(configured)
+    }
+    return ""
   }
 
   function isHomeRoot() {
@@ -458,12 +457,13 @@ Item {
       Quickshell.execDetached(["wl-copy", root.focusPath])
   }
 
-  function open(payloadJson) {
-    root.opened = true
+  function startSession(payloadJson) {
     root.error = ""
     root.offerHome = false
     var prevRoot = root.scanRoot
     var payload = parsePayload(payloadJson)
+    if (!payload.root && root.configuredRoot())
+      payload.root = root.configuredRoot()
     resolveRootAndFocus(payload)
     if (prevRoot && root.scanRoot !== prevRoot) {
       root.lastRootView = null
@@ -488,14 +488,9 @@ Item {
     refreshStat()
   }
 
-  function close() {
-    root.opened = false
-  }
-
   function dismiss() {
-    if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "postman.omadisk")
-    else close()
+    if (root.panelOwner && typeof root.panelOwner.close === "function")
+      root.panelOwner.close()
   }
 
   function handleKey(event) {
@@ -649,92 +644,45 @@ Item {
     }
   }
 
-  PanelWindow {
-    id: panel
-    visible: root.opened
-    anchors { top: true; bottom: true; left: true; right: true }
-    color: "transparent"
-    WlrLayershell.namespace: "postman-omadisk"
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    exclusionMode: ExclusionMode.Ignore
+  Column {
+    id: column
+    anchors.fill: parent
+    spacing: Style.space(12)
 
-    onVisibleChanged: if (visible) Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-
-    Rectangle {
-      anchors.fill: parent
-      color: root.scrim
+    BreadcrumbBar {
+      width: parent.width
+      overlay: root
+      foreground: root.foreground
     }
 
-    MouseArea {
-      anchors.fill: parent
-      onClicked: root.dismiss()
+    Row {
+      width: parent.width
+      height: parent.height - Style.space(28) * 2 - Style.space(12) * 2
+      spacing: Style.space(12)
+
+      SunburstView {
+        id: sunburst
+        width: Math.min(parent.height, parent.width * 0.52)
+        height: parent.height
+        overlay: root
+        foreground: root.foreground
+        fadeOpacity: root.sunburstFade
+      }
+
+      ChildList {
+        id: childList
+        width: parent.width - sunburst.width - parent.spacing
+        height: parent.height
+        overlay: root
+        foreground: root.foreground
+        selectedBackground: root.selectedBackground
+      }
     }
 
-    BorderSurface {
-      id: card
-      width: root.cardWidth
-      height: root.cardHeight
-      radius: root.cornerRadius
-      anchors.centerIn: parent
-      color: root.background
-      borderSpec: root.borderSpec
-      padding: root.contentMargin
-
-      MouseArea { anchors.fill: parent; onClicked: {} }
-
-      Item {
-        id: keyCatcher
-        anchors.fill: parent
-        focus: true
-        Keys.priority: Keys.BeforeItem
-        Keys.onPressed: function(event) { root.handleKey(event) }
-      }
-
-      Column {
-        anchors.fill: parent
-        anchors.topMargin: card.contentTopInset
-        anchors.rightMargin: card.contentRightInset
-        anchors.bottomMargin: card.contentBottomInset
-        anchors.leftMargin: card.contentLeftInset
-        spacing: Style.spacing.md
-
-        BreadcrumbBar {
-          width: parent.width
-          overlay: root
-          foreground: root.foreground
-        }
-
-        Row {
-          width: parent.width
-          height: parent.height - Style.space(28) * 2 - Style.spacing.md * 2
-          spacing: Style.spacing.panelGap
-
-          SunburstView {
-            id: sunburst
-            width: Math.min(parent.height, parent.width * 0.56)
-            height: parent.height
-            overlay: root
-            foreground: root.foreground
-            fadeOpacity: root.sunburstFade
-          }
-
-          ChildList {
-            id: childList
-            width: parent.width - sunburst.width - parent.spacing
-            height: parent.height
-            overlay: root
-            foreground: root.foreground
-            selectedBackground: root.selectedBackground
-          }
-        }
-
-        StatusBar {
-          width: parent.width
-          overlay: root
-          foreground: root.foreground
-        }
-      }
+    StatusBar {
+      width: parent.width
+      overlay: root
+      foreground: root.foreground
     }
   }
 }

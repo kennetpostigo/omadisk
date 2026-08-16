@@ -5,11 +5,9 @@
   "version": "0.1.0",
   "author": "postman",
   "license": "MIT",
-  "description": "DaisyDisk-like disk usage explorer. Summon with: omarchy-shell shell summon postman.omadisk",
-  "kinds": ["overlay", "bar-widget"],
-  "keepLoaded": true,
+  "description": "DaisyDisk-like disk usage explorer. Click the Disk space chip, or: omarchy-shell shell toggle postman.omadisk",
+  "kinds": ["bar-widget"],
   "entryPoints": {
-    "overlay": "overlay/Overlay.qml",
     "barWidget": "bar/BarWidget.qml"
   },
   "barWidget": {

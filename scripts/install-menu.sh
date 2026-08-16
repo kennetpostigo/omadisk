@@ -9,7 +9,7 @@ BLOCK='  "trigger.omadisk": {
     "icon": "󰋊",
     "label": "Disk Usage",
     "description": "Omadisk — explore disk space",
-    "action": "omarchy-shell shell summon postman.omadisk '\''{}'\''"
+    "action": "omarchy-shell shell toggle postman.omadisk"
   }'
 
 if [[ ! -f "${DEST}" ]]; then
