@@ -1,0 +1,3 @@
+{"v":1,"type":"hello","root":"$ROOT","metric":"allocated","stayOnFilesystem":true,"hardlinkAware":true}
+{"v":1,"type":"view","path":"$ROOT","name":"$NAME","partial":false}
+{"v":1,"type":"done","partial":false}

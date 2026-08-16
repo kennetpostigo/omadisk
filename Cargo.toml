@@ -1,0 +1,16 @@
+[package]
+name = "omadisk-scan"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Omadisk filesystem scanner (NDJSON protocol)"
+publish = false
+
+[[bin]]
+name = "omadisk-scan"
+path = "src/main.rs"
+
+[dependencies]
+libc = "0.2"
+serde_json = "1"
+sha2 = "0.10"

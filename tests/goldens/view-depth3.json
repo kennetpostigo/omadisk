@@ -1,0 +1,76 @@
+{
+  "v": 1,
+  "type": "view",
+  "path": "/home/postman",
+  "name": "postman",
+  "bytes": 448790528,
+  "apparent": 430000000,
+  "partial": true,
+  "files": 12040,
+  "dirs": 880,
+  "listTruncated": 12,
+  "children": [
+    {
+      "name": ".cache",
+      "path": "/home/postman/.cache",
+      "kind": "dir",
+      "bytes": 210000000,
+      "partial": true,
+      "error": "",
+      "childCount": 40,
+      "children": [
+        {
+          "name": "pip",
+          "path": "/home/postman/.cache/pip",
+          "kind": "dir",
+          "bytes": 80000000,
+          "partial": false,
+          "error": "",
+          "childCount": 12,
+          "children": [
+            {
+              "name": "http",
+              "path": "/home/postman/.cache/pip/http",
+              "kind": "dir",
+              "bytes": 50000000,
+              "partial": false,
+              "error": "",
+              "childCount": 4,
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Other",
+      "path": "/home/postman/\u0000other",
+      "kind": "other",
+      "bytes": 1234567,
+      "partial": false,
+      "error": "",
+      "childCount": 18,
+      "children": []
+    }
+  ],
+  "list": [
+    {
+      "name": ".cache",
+      "path": "/home/postman/.cache",
+      "kind": "dir",
+      "bytes": 210000000,
+      "partial": true,
+      "error": "",
+      "childCount": 40
+    },
+    {
+      "name": "notes.txt",
+      "path": "/home/postman/notes.txt",
+      "kind": "file",
+      "bytes": 4096,
+      "partial": false,
+      "error": "",
+      "childCount": 0
+    }
+  ]
+}
