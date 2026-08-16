@@ -291,7 +291,7 @@ fn view_trailing_slash_hits_cache() {
 }
 
 #[test]
-fn view_unknown_path_is_exit_3() {
+fn view_unknown_path_falls_back_to_root() {
     let p = Probe::new();
     let scan = p.run(&[
         "scan",
@@ -314,7 +314,26 @@ fn view_unknown_path_is_exit_3() {
         "--path",
         &missing.to_string_lossy(),
     ]);
-    assert_eq!(view.status.code(), Some(3));
+    assert_eq!(
+        view.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&view.stderr)
+    );
+    let ev = parse_line(
+        String::from_utf8_lossy(&view.stdout)
+            .lines()
+            .next()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(ev["type"], "view");
+    assert_eq!(ev["path"], p.root.to_string_lossy().as_ref());
+    assert!(ev["list"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["name"] == "big"));
 }
 
 #[test]

@@ -178,6 +178,7 @@ Item {
     }
     if (ev.type === "view") applyView(ev)
     else if (ev.type === "progress") {
+      if (root.runningScanRoot && root.runningScanRoot !== root.scanRoot) return
       root.progress = {
         files: ev.files || 0,
         dirs: ev.dirs || 0,
@@ -185,6 +186,7 @@ Item {
         current: ev.current || ""
       }
     } else if (ev.type === "done") {
+      if (root.runningScanRoot && root.runningScanRoot !== root.scanRoot) return
       root.cachePublished = true
       root.partial = ev.partial === true
     } else if (ev.type === "error" && ev.fatal) {
@@ -228,7 +230,7 @@ Item {
       }
       return
     }
-    if (ev.finishedAt)
+    if ((ev.path === root.scanRoot || ev.path === root.focusPath) && ev.finishedAt)
       stampCacheAge(ev.finishedAt)
     if (ev.path === root.scanRoot)
       root.lastRootView = ev
@@ -245,6 +247,14 @@ Item {
         root.offerHome = false
         setCurrentView(projected, false)
       }
+      return
+    }
+    if (ev.path === root.scanRoot && root.focusPath !== root.scanRoot) {
+      root.focusPath = root.scanRoot
+      root.error = ""
+      root.offerHome = false
+      setCurrentView(ev, false)
+      persistSession()
     }
   }
 
@@ -382,6 +392,12 @@ Item {
       return
     }
     if (exitCode === 3) {
+      if (root.focusPath !== root.scanRoot) {
+        root.focusPath = root.scanRoot
+        persistSession()
+        startViewProc(root.scanRoot, root.scanRoot)
+        return
+      }
       root.cachePublished = false
       attachOrStartScan()
       return
@@ -570,6 +586,7 @@ Item {
       onStreamFinished: root.scanStderr = String(text || "").trim()
     }
     onExited: function(exitCode) {
+      var completedRoot = root.runningScanRoot
       if (exitCode === 127 && root.ioniceAvailable) {
         root.ioniceAvailable = false
         if (root.pendingRun || root.scanning) {
@@ -585,14 +602,15 @@ Item {
         Qt.callLater(function() { startScan({ cancelLive: false }) })
         return
       }
-      if (!root.expectedStop && exitCode !== 0 && exitCode !== 130) {
+      if (!root.expectedStop && exitCode !== 0 && exitCode !== 130
+          && completedRoot === root.scanRoot) {
         root.error = root.scanStderr || "Scan failed"
       }
       root.expectedStop = false
-      root.scanning = false
       root.runningScanRoot = ""
+      root.scanning = false
       console.log("omadisk: scan exited", exitCode)
-      if (exitCode === 0) root.onDone()
+      if (exitCode === 0 && completedRoot === root.scanRoot) root.onDone()
     }
   }
 

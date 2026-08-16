@@ -464,10 +464,14 @@ fn cmd_view(cache_dir: &Path, process_start: SystemTime, args: ViewArgs) -> i32 
         .get("rootRealpath")
         .and_then(|v| v.as_str())
         .unwrap_or(meta_root);
-    let path = remap_cached_path(&path, meta_root, meta_real);
+    let mut path = remap_cached_path(&path, meta_root, meta_real);
     let adapter = CacheTree::new(tree);
     if adapter.get(&path).is_none() {
-        return EXIT_CACHE;
+        let fallback = remap_cached_path(meta_root, meta_root, meta_real);
+        if adapter.get(&fallback).is_none() {
+            return EXIT_CACHE;
+        }
+        path = fallback;
     }
     let mut event = build_view(
         &adapter,
