@@ -17,8 +17,12 @@ Item {
       var p = overlay.progress || {}
       return "Scanning… " + Format.count(p.files || 0) + " files · " + Format.bytes(p.bytes || 0)
     }
-    if (overlay.cacheAgeSec >= 0)
-      return "Scanned " + Format.relativeTime(overlay.cacheAgeSec)
+    if (overlay.cacheAgeSec >= 0) {
+      var age = "Scanned " + Format.relativeTime(overlay.cacheAgeSec)
+      if (overlay.cacheAgeSec >= 86400)
+        return age + " — press r to refresh"
+      return age
+    }
     return overlay.partial ? "Partial view" : ""
   }
 

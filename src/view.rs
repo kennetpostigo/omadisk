@@ -122,6 +122,54 @@ pub fn os_dirname(path: &str) -> String {
     }
 }
 
+pub fn normalize_abs_path(path: &str) -> String {
+    if path.is_empty() {
+        return String::new();
+    }
+    let mut out = String::with_capacity(path.len());
+    let mut last_slash = false;
+    for c in path.chars() {
+        if c == '/' {
+            if !last_slash {
+                out.push('/');
+            }
+            last_slash = true;
+        } else {
+            out.push(c);
+            last_slash = false;
+        }
+    }
+    if out.len() > 1 && out.ends_with('/') {
+        out.pop();
+    }
+    out
+}
+
+pub fn remap_cached_path(requested: &str, meta_root: &str, meta_real: &str) -> String {
+    let req = normalize_abs_path(requested);
+    let stored = normalize_abs_path(meta_root);
+    let real = normalize_abs_path(meta_real);
+    if req.is_empty() {
+        return stored;
+    }
+    if req == stored || (!real.is_empty() && req == real) {
+        return stored;
+    }
+    if !real.is_empty() && real != "/" && req.starts_with(&(real.clone() + "/")) {
+        if stored == "/" {
+            return req[real.len()..].to_string();
+        }
+        return stored + &req[real.len()..];
+    }
+    if stored == "/" {
+        return req;
+    }
+    if req.starts_with(&(stored.clone() + "/")) {
+        return req;
+    }
+    req
+}
+
 fn json_int(v: &Value) -> u64 {
     v.as_u64()
         .or_else(|| v.as_i64().map(|n| n.max(0) as u64))
@@ -382,7 +430,6 @@ fn expand_nested(
         }
     }
     if depth_left > 1 && remaining > 0 {
-        // Recurse into each expanded child's children array
         for (idx, _) in next_frontier_idx {
             if remaining == 0 {
                 break;
@@ -993,5 +1040,29 @@ mod tests {
         let ring3 = ring2[0]["children"].as_array().unwrap();
         assert!(!ring3.is_empty());
         assert!(count_slice_nodes(&data) <= 120);
+    }
+
+    #[test]
+    fn normalize_strips_trailing_and_duplicate_slashes() {
+        assert_eq!(normalize_abs_path("/var/"), "/var");
+        assert_eq!(normalize_abs_path("/var//log/"), "/var/log");
+        assert_eq!(normalize_abs_path("/"), "/");
+    }
+
+    #[test]
+    fn remap_view_path_uses_meta_root() {
+        assert_eq!(
+            remap_cached_path("/home/x/", "/home/x", "/home/x"),
+            "/home/x"
+        );
+        assert_eq!(
+            remap_cached_path("/home/x/.cache", "/home/x", "/home/x"),
+            "/home/x/.cache"
+        );
+        assert_eq!(
+            remap_cached_path("/real/home/x/.cache", "/home/x", "/real/home/x"),
+            "/home/x/.cache"
+        );
+        assert_eq!(remap_cached_path("/var", "/", "/"), "/var");
     }
 }

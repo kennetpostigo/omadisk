@@ -267,10 +267,39 @@ function parentPath(path) {
   return trimmed.substring(0, i)
 }
 
+function normalizePath(path) {
+  var s = String(path || "")
+  if (!s) return ""
+  s = s.replace(/\/+/g, "/")
+  if (s.length > 1) s = s.replace(/\/+$/, "")
+  return s
+}
+
+function isValidAbsPath(path) {
+  var s = String(path || "")
+  return s.length > 0 && s.charAt(0) === "/" && s.indexOf("\0") < 0
+}
+
 function isDescendant(root, path) {
-  var r = String(root || "")
-  var p = String(path || "")
-  return p === r || p.indexOf(r + "/") === 0
+  var r = normalizePath(root)
+  var p = normalizePath(path)
+  if (!r || !p) return false
+  if (p === r) return true
+  if (r === "/") return p.charAt(0) === "/"
+  return p.indexOf(r + "/") === 0
+}
+
+function joinUnder(root, name) {
+  var r = normalizePath(root)
+  if (r === "/") return "/" + name
+  return r + "/" + name
+}
+
+function isListRowPath(rows, path) {
+  for (var i = 0; i < (rows || []).length; i++) {
+    if (rows[i].path === path) return true
+  }
+  return false
 }
 
 function basename(path) {

@@ -17,7 +17,9 @@ Item {
       ? String(overlay.currentView.path || "") + "/\0other"
       : ""
     if (slice.kind === "other" && slice.ring === 1 && slice.path === ring1Other) {
-      return overlay.hoverPath !== "" && !overlay.hoverHasSlice
+      if (overlay.hoverPath === "" || overlay.hoverPath === overlay.focusPath)
+        return false
+      return overlay.hoverIsListRow && !overlay.hoverHasSlice
     }
     return false
   }

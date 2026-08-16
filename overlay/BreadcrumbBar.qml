@@ -26,7 +26,7 @@ Item {
       var segs = rest.split("/").filter(function(s) { return s.length > 0 })
       var acc = rootPath
       for (var i = 0; i < segs.length; i++) {
-        acc = acc + "/" + segs[i]
+        acc = Model.joinUnder(acc, segs[i])
         parts.push({ path: acc, label: segs[i] })
       }
     }

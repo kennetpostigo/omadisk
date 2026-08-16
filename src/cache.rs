@@ -74,6 +74,15 @@ pub fn ensure_dir(cache_dir: impl AsRef<Path>) -> io::Result<PathBuf> {
     Ok(path)
 }
 
+pub fn ensure_session(cache_dir: &Path) {
+    let path = cache_dir.join("session.json");
+    if path.is_file() {
+        chmod(&path, FILE_MODE);
+        return;
+    }
+    let _ = atomic_write(&path, b"{\"v\":1}\n");
+}
+
 pub fn scan_dir(cache_dir: &Path, key: &str) -> PathBuf {
     cache_dir.join("scans").join(key)
 }

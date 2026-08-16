@@ -9,8 +9,8 @@ Item {
 
   readonly property bool show: {
     if (!overlay) return false
-    if (overlay.error) return true
-    if (overlay.offerHome) return true
+    if (overlay.offerHome && !overlay.currentView) return true
+    if (overlay.error && !overlay.currentView) return true
     var view = overlay.currentView
     if (!overlay.scanning && view && (view.bytes === 0) && (!(view.list || []).length))
       return true

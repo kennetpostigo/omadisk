@@ -251,6 +251,92 @@ fn view_miss_is_exit_3() {
 }
 
 #[test]
+fn view_trailing_slash_hits_cache() {
+    let p = Probe::new();
+    let scan = p.run(&[
+        "scan",
+        "--root",
+        &p.root.to_string_lossy(),
+        "--emit-view-ms",
+        "0",
+    ]);
+    assert_eq!(
+        scan.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&scan.stderr)
+    );
+    let slashed = format!("{}/", p.root.to_string_lossy());
+    let view = p.run(&["view", "--root", &slashed, "--path", &slashed]);
+    assert_eq!(
+        view.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&view.stderr)
+    );
+    let ev = parse_line(
+        String::from_utf8_lossy(&view.stdout)
+            .lines()
+            .next()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(ev["type"], "view");
+    assert_eq!(ev["path"], p.root.to_string_lossy().as_ref());
+    assert!(ev["list"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["name"] == "big"));
+}
+
+#[test]
+fn view_unknown_path_is_exit_3() {
+    let p = Probe::new();
+    let scan = p.run(&[
+        "scan",
+        "--root",
+        &p.root.to_string_lossy(),
+        "--emit-view-ms",
+        "0",
+    ]);
+    assert_eq!(
+        scan.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&scan.stderr)
+    );
+    let missing = p.root.join("no-such-child");
+    let view = p.run(&[
+        "view",
+        "--root",
+        &p.root.to_string_lossy(),
+        "--path",
+        &missing.to_string_lossy(),
+    ]);
+    assert_eq!(view.status.code(), Some(3));
+}
+
+#[test]
+fn proto_creates_session_0600() {
+    let p = Probe::new();
+    let out = p.run(&["proto"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let session = p.cache.join("session.json");
+    assert!(session.is_file());
+    use std::os::unix::fs::PermissionsExt;
+    assert_eq!(
+        std::fs::metadata(&session).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+}
+
+#[test]
 fn scan_missing_root_is_exit_2() {
     let p = Probe::new();
     let missing = p.tmp.join("missing");

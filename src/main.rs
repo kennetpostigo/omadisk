@@ -8,13 +8,14 @@ use cache::{
     cache_key, default_cache_dir, ensure_dir, load_scan, publish_scan, serialize_tree, sweep_tmps,
 };
 use protocol::{done, emit_line, error, hello, progress, proto_event, skip};
+use std::cell::Cell;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use view::{
-    build_view, CacheTree, MemoryTree, ViewOpts, DEFAULT_DEPTH, DEFAULT_LIST_LIMIT,
-    DEFAULT_MAX_FLAT, DEFAULT_MAX_SLICES, DEFAULT_SLICE_MIN_RATIO,
+    build_view, remap_cached_path, CacheTree, MemoryTree, TreeAdapter, ViewOpts, DEFAULT_DEPTH,
+    DEFAULT_LIST_LIMIT, DEFAULT_MAX_FLAT, DEFAULT_MAX_SLICES, DEFAULT_SLICE_MIN_RATIO,
 };
 use walk::{Metric, Walker};
 
@@ -398,6 +399,7 @@ fn cmd_proto(cache_dir: &Path, process_start: SystemTime) -> i32 {
         }
     };
     sweep_tmps(&dir, process_start);
+    cache::ensure_session(&dir);
     if emit(&proto_event(&dir.to_string_lossy())).is_err() {
         return EXIT_OK;
     }
@@ -457,8 +459,17 @@ fn cmd_view(cache_dir: &Path, process_start: SystemTime, args: ViewArgs) -> i32 
     let Some((meta, tree)) = load_scan(&dir, &key) else {
         return EXIT_CACHE;
     };
+    let meta_root = meta.get("root").and_then(|v| v.as_str()).unwrap_or(&root);
+    let meta_real = meta
+        .get("rootRealpath")
+        .and_then(|v| v.as_str())
+        .unwrap_or(meta_root);
+    let path = remap_cached_path(&path, meta_root, meta_real);
     let adapter = CacheTree::new(tree);
-    let event = build_view(
+    if adapter.get(&path).is_none() {
+        return EXIT_CACHE;
+    }
+    let mut event = build_view(
         &adapter,
         &path,
         &ViewOpts {
@@ -472,6 +483,9 @@ fn cmd_view(cache_dir: &Path, process_start: SystemTime, args: ViewArgs) -> i32 
             partial: false,
         },
     );
+    if let Some(finished) = meta.get("finishedAt") {
+        event["finishedAt"] = finished.clone();
+    }
     if emit(&event).is_err() {
         return EXIT_OK;
     }
@@ -521,10 +535,10 @@ fn cmd_scan(cache_dir: &Path, process_start: SystemTime, args: ScanArgs) -> i32 
 
     let emit_view_s = args.emit_view_ms as f64 / 1000.0;
     let progress_s = args.progress_ms as f64 / 1000.0;
-    let last_progress_at = std::sync::Mutex::new(0.0f64);
-    let last_view_at = std::sync::Mutex::new(0.0f64);
-    let last_counters = std::sync::Mutex::new((-1i64, -1i64, -1i64));
-    let last_stderr_progress = std::sync::Mutex::new(0.0f64);
+    let last_progress_at = Cell::new(0.0f64);
+    let last_view_at = Cell::new(0.0f64);
+    let last_counters = Cell::new((-1i64, -1i64, -1i64));
+    let last_stderr_progress = Cell::new(0.0f64);
     let t_scan = Instant::now();
 
     let mut walker = Walker::new(&root);
@@ -560,49 +574,44 @@ fn cmd_scan(cache_dir: &Path, process_start: SystemTime, args: ScanArgs) -> i32 
         }
         let now = t_scan.elapsed().as_secs_f64();
         let counters = (w.files as i64, w.dirs as i64, w.skipped as i64);
+        if progress_s > 0.0
+            && now - last_progress_at.get() >= progress_s
+            && counters != last_counters.get()
         {
-            let mut last = last_progress_at.lock().unwrap();
-            let mut last_c = last_counters.lock().unwrap();
-            if progress_s > 0.0 && now - *last >= progress_s && counters != *last_c {
-                let bytes_total = w.tree.nodes.get(w.tree.root).map(|n| n.bytes).unwrap_or(0);
-                let _ = emit(&progress(
-                    w.files,
-                    w.dirs,
-                    bytes_total,
-                    &w.current,
-                    w.skipped,
+            let bytes_total = w.tree.nodes.get(w.tree.root).map(|n| n.bytes).unwrap_or(0);
+            let _ = emit(&progress(
+                w.files,
+                w.dirs,
+                bytes_total,
+                &w.current,
+                w.skipped,
+            ));
+            if now - last_stderr_progress.get() >= 2.0 {
+                log_err(&format!(
+                    "progress files={} dirs={} bytes={bytes_total}",
+                    w.files, w.dirs
                 ));
-                let mut last_se = last_stderr_progress.lock().unwrap();
-                if now - *last_se >= 2.0 {
-                    log_err(&format!(
-                        "progress files={} dirs={} bytes={bytes_total}",
-                        w.files, w.dirs
-                    ));
-                    *last_se = now;
-                }
-                *last = now;
-                *last_c = counters;
+                last_stderr_progress.set(now);
             }
+            last_progress_at.set(now);
+            last_counters.set(counters);
         }
-        if emit_view_s > 0.0 {
-            let mut last = last_view_at.lock().unwrap();
-            if now - *last >= emit_view_s {
-                if !w.tree.nodes.is_empty() {
-                    let mut event = build_view(
-                        &MemoryTree::new(w.tree.clone()),
-                        &w.root.to_string_lossy(),
-                        &ViewOpts {
-                            files: w.files,
-                            dirs: w.dirs,
-                            partial: true,
-                            ..ViewOpts::default()
-                        },
-                    );
-                    event["partial"] = serde_json::json!(true);
-                    let _ = emit(&event);
-                }
-                *last = now;
+        if emit_view_s > 0.0 && now - last_view_at.get() >= emit_view_s {
+            if !w.tree.nodes.is_empty() {
+                let mut event = build_view(
+                    &MemoryTree::new(w.tree.clone()),
+                    &w.root.to_string_lossy(),
+                    &ViewOpts {
+                        files: w.files,
+                        dirs: w.dirs,
+                        partial: true,
+                        ..ViewOpts::default()
+                    },
+                );
+                event["partial"] = serde_json::json!(true);
+                let _ = emit(&event);
             }
+            last_view_at.set(now);
         }
     }));
 

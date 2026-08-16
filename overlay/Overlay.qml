@@ -43,7 +43,7 @@ Item {
   property var diskStat: null
   property var sessionObj: null
   property real sunburstFade: 1
-  property string lastOpenedRoot: ""
+  property real cacheFinishedAt: 0
 
   readonly property color background: Color.menu.background
   readonly property color foreground: Color.menu.text
@@ -58,6 +58,7 @@ Item {
   readonly property int cardWidth: Math.min(Style.space(980), panel.width - Style.gapsOut * 2)
   readonly property int cardHeight: Math.min(Style.space(640), panel.height - Style.gapsOut * 2)
   readonly property bool hoverHasSlice: Model.hasSlicePath(sliceModel, hoverPath)
+  readonly property bool hoverIsListRow: Model.isListRowPath(listRows, hoverPath)
 
   ListModel { id: sliceModelRef }
   property alias sliceModel: sliceModelRef
@@ -112,21 +113,41 @@ Item {
     }
   }
 
+  function rejectRoot(path) {
+    root.scanRoot = homeDir()
+    root.focusPath = root.scanRoot
+    root.error = "Path missing: " + path
+    root.offerHome = true
+    root.currentView = null
+    root.listRows = []
+    Model.replaceSliceModel(sliceModelRef, [])
+  }
+
   function resolveRootAndFocus(payload) {
     var p = payload || {}
     if (typeof p.root === "string" && p.root.length > 0) {
-      root.scanRoot = p.root
-      var focus = p.focus || p.root
-      if (focus !== root.scanRoot && focus.indexOf(root.scanRoot + "/") !== 0)
+      if (!Model.isValidAbsPath(p.root)) {
+        rejectRoot(p.root)
+        return
+      }
+      root.scanRoot = Model.normalizePath(p.root)
+      var focus = p.focus || root.scanRoot
+      if (!Model.isValidAbsPath(focus) || !Model.isDescendant(root.scanRoot, focus))
         focus = root.scanRoot
+      else
+        focus = Model.normalizePath(focus)
       root.focusPath = focus
       return
     }
     if (root.sessionObj && root.sessionObj.v === 1 && root.sessionObj.lastRoot) {
-      root.scanRoot = root.sessionObj.lastRoot
+      if (!Model.isValidAbsPath(root.sessionObj.lastRoot)) {
+        rejectRoot(root.sessionObj.lastRoot)
+        return
+      }
+      root.scanRoot = Model.normalizePath(root.sessionObj.lastRoot)
       var lastFocus = root.sessionObj.lastFocus
-      if (lastFocus && Model.isDescendant(root.scanRoot, lastFocus))
-        root.focusPath = lastFocus
+      if (lastFocus && Model.isValidAbsPath(lastFocus) && Model.isDescendant(root.scanRoot, lastFocus))
+        root.focusPath = Model.normalizePath(lastFocus)
       else
         root.focusPath = root.scanRoot
       return
@@ -145,6 +166,7 @@ Item {
       lastOpenedAt: Math.floor(Date.now() / 1000)
     }
     sessionFile.setText(JSON.stringify(obj) + "\n")
+    Quickshell.execDetached(["chmod", "600", cacheDir() + "/session.json"])
   }
 
   function applyLine(line) {
@@ -206,15 +228,23 @@ Item {
       }
       return
     }
+    if (ev.finishedAt)
+      stampCacheAge(ev.finishedAt)
     if (ev.path === root.scanRoot)
       root.lastRootView = ev
     if (ev.path === root.focusPath) {
+      root.error = ""
+      root.offerHome = false
       setCurrentView(ev, false)
       return
     }
     if (ev.path === root.scanRoot && Model.inWindow(ev, root.focusPath)) {
       var projected = Model.project(ev, root.focusPath)
-      if (projected) setCurrentView(projected, false)
+      if (projected) {
+        root.error = ""
+        root.offerHome = false
+        setCurrentView(projected, false)
+      }
     }
   }
 
@@ -230,6 +260,8 @@ Item {
     if (Model.inWindow(root.lastRootView, path) || Model.inWindow(root.currentView, path)) {
       var src = Model.inWindow(root.lastRootView, path) ? root.lastRootView : root.currentView
       setCurrentView(Model.project(src, path), true)
+      if (root.cachePublished)
+        startViewProc(root.scanRoot, path)
       persistSession()
       root.focusChanging = false
       return
@@ -241,6 +273,26 @@ Item {
       return
     }
     root.deeperPending = true
+    var row = null
+    for (var i = 0; i < root.listRows.length; i++) {
+      if (root.listRows[i].path === path) { row = root.listRows[i]; break }
+    }
+    if (!row && root.currentView)
+      row = Model.findNode(root.currentView, path)
+    setCurrentView({
+      v: 1,
+      type: "view",
+      path: path,
+      name: row ? row.name : Model.basename(path),
+      bytes: row ? row.bytes : 0,
+      apparent: row ? (row.apparent || row.bytes) : 0,
+      partial: true,
+      files: 0,
+      dirs: 0,
+      listTruncated: 0,
+      children: [],
+      list: []
+    }, true)
     persistSession()
     root.focusChanging = false
   }
@@ -256,12 +308,19 @@ Item {
   function onDone() {
     root.cachePublished = true
     root.scanning = false
-    if (root.deeperPending || (root.focusPath !== root.scanRoot && !Model.inWindow(root.lastRootView, root.focusPath))) {
+    if (root.deeperPending || root.focusPath !== root.scanRoot) {
       startViewProc(root.scanRoot, root.focusPath)
       root.deeperPending = false
     }
     refreshStat()
-    root.cacheAgeSec = 0
+    stampCacheAge(Date.now() / 1000)
+  }
+
+  function stampCacheAge(finishedAt) {
+    var t = Number(finishedAt)
+    if (!isFinite(t) || t <= 0) return
+    root.cacheFinishedAt = t
+    root.cacheAgeSec = Math.max(0, Math.floor(Date.now() / 1000 - t))
   }
 
   function startScan(opts) {
@@ -384,16 +443,32 @@ Item {
 
   function open(payloadJson) {
     root.opened = true
+    root.error = ""
+    root.offerHome = false
+    var prevRoot = root.scanRoot
     var payload = parsePayload(payloadJson)
     resolveRootAndFocus(payload)
+    if (prevRoot && root.scanRoot !== prevRoot) {
+      root.lastRootView = null
+      root.deeperPending = false
+      root.progress = ({ files: 0, dirs: 0, bytes: 0, current: "" })
+      root.currentView = null
+      root.listRows = []
+      Model.replaceSliceModel(sliceModelRef, [])
+      root.cachePublished = false
+      root.cacheAgeSec = -1
+      root.cacheFinishedAt = 0
+    }
+    root.scanning = scanProc.running && root.runningScanRoot === root.scanRoot
     console.log("omadisk: open", root.scanRoot, "rescan=" + (payload.rescan === true))
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+    if (root.offerHome)
+      return
     startViewProc(root.scanRoot, root.focusPath)
     if (payload.rescan === true)
       startScan({ cancelLive: true })
     persistSession()
     refreshStat()
-    root.lastOpenedRoot = root.scanRoot
   }
 
   function close() {
@@ -465,6 +540,13 @@ Item {
     id: fadeTimer
     interval: 20
     onTriggered: root.sunburstFade = 1
+  }
+
+  Timer {
+    interval: 1000
+    running: root.opened && root.cacheFinishedAt > 0
+    repeat: true
+    onTriggered: root.cacheAgeSec = Math.max(0, Math.floor(Date.now() / 1000 - root.cacheFinishedAt))
   }
 
   Process {
