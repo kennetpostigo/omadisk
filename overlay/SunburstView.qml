@@ -45,21 +45,10 @@ Item {
   Repeater {
     model: overlay ? overlay.sliceModel : null
     SliceArc {
+      required property int index
       anchors.fill: parent
       overlay: root.overlay
-      slice: ({
-        path: path,
-        name: name,
-        kind: kind,
-        bytes: bytes,
-        ring: ring,
-        startDeg: startDeg,
-        sweepDeg: sweepDeg,
-        innerR: innerR,
-        outerR: outerR,
-        color: color,
-        drillable: drillable
-      })
+      slice: overlay.sliceModel.get(index)
       cx: root.cx
       cy: root.cy
     }
