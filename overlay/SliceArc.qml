@@ -48,9 +48,8 @@ Item {
     }
 
     ShapePath {
-      visible: root.hovered
       strokeWidth: root.thickness + 2
-      strokeColor: Color.accent
+      strokeColor: root.hovered ? Color.accent : "transparent"
       fillColor: "transparent"
       capStyle: ShapePath.FlatCap
       PathAngleArc {
