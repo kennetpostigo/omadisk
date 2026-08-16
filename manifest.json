@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "postman.omadisk",
+  "name": "Omadisk",
+  "version": "0.1.0",
+  "author": "postman",
+  "license": "MIT",
+  "description": "DaisyDisk-like disk usage explorer. Summon with: omarchy-shell shell summon postman.omadisk",
+  "kinds": ["overlay", "bar-widget"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "overlay/Overlay.qml",
+    "barWidget": "bar/BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Disk space",
+    "description": "Used / free on a chosen filesystem. Click to open Omadisk.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "root": "",
+      "refreshIntervalSec": 30,
+      "showFree": true
+    },
+    "schema": [
+      {
+        "key": "root",
+        "type": "string",
+        "label": "Scan root (empty = home)",
+        "defaultValue": ""
+      },
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 10,
+        "max": 3600,
+        "step": 5,
+        "defaultValue": 30
+      },
+      {
+        "key": "showFree",
+        "type": "boolean",
+        "label": "Show free space",
+        "defaultValue": true
+      }
+    ]
+  }
+}
