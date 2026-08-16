@@ -24,11 +24,28 @@ function bytes(n) {
   return v.toFixed(digits) + " " + units[i]
 }
 
-function chipText(stat, showFree, vertical) {
-  if (!stat || !stat.ok) return "Disk"
-  if (vertical) return bytes(stat.used)
-  if (showFree) return bytes(stat.used) + " · " + bytes(stat.free)
-  return bytes(stat.used)
+function chipIcon() {
+  return "󰋊"
+}
+
+function availableText(stat) {
+  if (!stat || !stat.ok) return ""
+  return bytes(stat.free)
+}
+
+function chipText(stat, showAvailable, vertical) {
+  var icon = chipIcon()
+  if (vertical) return icon
+  var free = availableText(stat)
+  if (!showAvailable || !free) return icon
+  return icon + " " + free
+}
+
+function chipTooltip(stat, rootPath) {
+  var path = String(rootPath || "")
+  if (!stat || !stat.ok)
+    return path + " · click to open Omadisk"
+  return path + " · " + bytes(stat.free) + " available · click to open Omadisk"
 }
 
 function urgent(stat) {

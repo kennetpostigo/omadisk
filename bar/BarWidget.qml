@@ -29,9 +29,9 @@ Panel {
     statProc.running = true
   }
 
-  readonly property bool showFree: setting("showFree", true)
+  readonly property bool showAvailable: setting("showFree", true)
   readonly property int refreshSec: Math.max(10, Number(setting("refreshIntervalSec", 30)) || 30)
-  readonly property string label: Model.chipText(stat, showFree, vertical)
+  readonly property string label: Model.chipText(stat, showAvailable, vertical)
   readonly property bool diskUrgent: Model.urgent(stat)
   readonly property bool vertical: bar ? bar.vertical : false
 
@@ -67,7 +67,7 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     text: root.label
-    tooltipText: root.chipRoot() + " · click to open Omadisk"
+    tooltipText: Model.chipTooltip(stat, root.chipRoot())
     active: root.diskUrgent
     foreground: root.diskUrgent ? Color.urgent : (bar ? bar.barForeground : Color.foreground)
     onPressed: function(b) {
