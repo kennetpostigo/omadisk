@@ -149,6 +149,11 @@ Item {
       root.focusPath = focus
       return
     }
+    if (root.focusPath && root.scanRoot
+        && Model.isValidAbsPath(root.focusPath)
+        && Model.isDescendant(root.scanRoot, root.focusPath)) {
+      return
+    }
     if (root.sessionObj && root.sessionObj.v === 1 && root.sessionObj.lastRoot) {
       if (!Model.isValidAbsPath(root.sessionObj.lastRoot)) {
         rejectRoot(root.sessionObj.lastRoot)
@@ -167,7 +172,7 @@ Item {
   }
 
   function persistSession() {
-    if (!root.protoReady) return
+    if (!root.scanRoot || !root.focusPath) return
     var obj = {
       v: 1,
       lastRoot: root.scanRoot,
@@ -175,6 +180,8 @@ Item {
       lastKey: "",
       lastOpenedAt: Math.floor(Date.now() / 1000)
     }
+    root.sessionObj = obj
+    if (!root.protoReady) return
     sessionFile.setText(JSON.stringify(obj) + "\n")
     Quickshell.execDetached(["chmod", "600", cacheDir() + "/session.json"])
   }
@@ -300,11 +307,7 @@ Item {
     }
     if (ev.path === root.scanRoot && root.focusPath !== root.scanRoot
         && !root.scanning && !root.deeperPending) {
-      root.focusPath = root.scanRoot
-      root.error = ""
-      root.offerHome = false
-      setCurrentView(ev, false)
-      persistSession()
+      startViewProc(root.scanRoot, root.focusPath)
     }
   }
 
@@ -539,7 +542,6 @@ Item {
     startViewProc(root.scanRoot, root.focusPath)
     if (payload.rescan === true)
       startScan({ cancelLive: true })
-    persistSession()
     refreshStat()
   }
 
@@ -692,9 +694,13 @@ Item {
     atomicWrites: true
     onLoaded: {
       try {
-        root.sessionObj = JSON.parse(text() || "{}")
+        var disk = JSON.parse(text() || "{}")
+        if (root.sessionObj && root.sessionObj.lastOpenedAt
+            && disk.lastOpenedAt && disk.lastOpenedAt < root.sessionObj.lastOpenedAt)
+          return
+        root.sessionObj = disk
       } catch (e) {
-        root.sessionObj = null
+        if (!root.sessionObj) root.sessionObj = null
       }
     }
   }

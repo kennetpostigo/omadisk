@@ -42,6 +42,8 @@ Panel {
   onOpenedChanged: {
     if (opened)
       explorer.startSession("{}")
+    else
+      explorer.persistSession()
   }
 
   Timer {
