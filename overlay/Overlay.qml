@@ -49,11 +49,10 @@ Item {
   readonly property color foreground: bar ? bar.foreground : Color.popups.text
   readonly property color selectedBackground: Util.alpha(Color.accent, 0.28)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  readonly property bool hoverHasSlice: Model.hasSlicePath(sliceModel, hoverPath)
+  property var slices: []
+  readonly property bool hoverHasSlice: Model.hasSlicePath(slices, hoverPath)
   readonly property bool hoverIsListRow: Model.isListRowPath(listRows, hoverPath)
-
-  ListModel { id: sliceModelRef }
-  property alias sliceModel: sliceModelRef
+  readonly property var hoverSlice: Model.sliceByPath(slices, hoverPath)
 
   function homeDir() {
     return Quickshell.env("HOME") || "/home"
@@ -91,11 +90,10 @@ Item {
     var size = Math.min(sunburst.width, sunburst.height)
     if (!(size > 8)) size = Style.space(240)
     return {
-      sliceGapDeg: 0.35,
-      minSweepDeg: 1.6,
-      hubRadius: 0.34 * size / 2,
-      ringWidth: 0.18 * size / 2,
-      ringPad: Style.space(3)
+      sliceGapDeg: 0.7,
+      hubRadius: 0.36 * size / 2,
+      ringWidth: 0.19 * size / 2,
+      ringPad: Math.max(2, size * 0.012)
     }
   }
 
@@ -104,8 +102,7 @@ Item {
     if (!(size > 8) || !root.currentView) return
     if (Math.abs(size - root.lastLayoutSize) < 0.5) return
     root.lastLayoutSize = size
-    var nextSlices = Model.layoutSlices(root.currentView, -90, geom())
-    Model.replaceSliceModel(sliceModelRef, nextSlices)
+    root.slices = Model.layoutSlices(root.currentView, -90, geom())
   }
 
   function niceIoniceConcat(args) {
@@ -132,7 +129,7 @@ Item {
     root.offerHome = true
     root.currentView = null
     root.listRows = []
-    Model.replaceSliceModel(sliceModelRef, [])
+    root.slices = []
   }
 
   function resolveRootAndFocus(payload) {
@@ -207,17 +204,12 @@ Item {
   }
 
   function setCurrentView(ev, changing) {
-    var nextSlices = Model.layoutSlices(ev, -90, geom())
     var nextList = ev.list || []
     root.currentView = ev
     root.partial = ev.partial === true
     root.listRows = nextList
-    if (!changing && Model.samePathSet(Model.pathKeySetFromModel(sliceModelRef), Model.pathKeySet(nextSlices))) {
-      Model.patchSlices(sliceModelRef, nextSlices)
-    } else {
-      Model.replaceSliceModel(sliceModelRef, nextSlices)
-      if (changing) playFocusFade()
-    }
+    root.slices = Model.layoutSlices(ev, -90, geom())
+    if (changing) playFocusFade()
     if (root.selectedIndex >= nextList.length)
       root.selectedIndex = Math.max(0, nextList.length - 1)
     root.lastLayoutSize = Math.min(sunburst.width, sunburst.height)
@@ -233,9 +225,8 @@ Item {
       var node = Model.findNode(root.currentView, path)
       if (node && node.kind) return node.kind
     }
-    for (i = 0; i < sliceModelRef.count; i++) {
-      var s = sliceModelRef.get(i)
-      if (s.path === path) return s.kind || ""
+    for (i = 0; i < root.slices.length; i++) {
+      if (root.slices[i].path === path) return root.slices[i].kind || ""
     }
     return ""
   }
@@ -264,7 +255,7 @@ Item {
   }
 
   function playFocusFade() {
-    root.sunburstFade = 0.35
+    root.sunburstFade = 0.88
     fadeTimer.restart()
   }
 
@@ -488,14 +479,12 @@ Item {
     var next = root.selectedIndex + delta
     if (next < 0) next = 0
     if (next >= n) next = n - 1
-    root.selectedIndex = next
-    root.hoverPath = root.listRows[next].path
-    childList.positionSelected()
+    syncSelection(root.listRows[next].path)
   }
 
   function activateSelected() {
     var row = root.listRows[root.selectedIndex]
-    if (row && row.kind === "dir") drill(row.path)
+    if (row) activatePath(row.path)
   }
 
   function openFocus() {
@@ -522,14 +511,13 @@ Item {
       root.progress = ({ files: 0, dirs: 0, bytes: 0, current: "" })
       root.currentView = null
       root.listRows = []
-      Model.replaceSliceModel(sliceModelRef, [])
+      root.slices = []
       root.cachePublished = false
       root.cacheAgeSec = -1
       root.cacheFinishedAt = 0
     }
     root.scanning = scanProc.running && root.runningScanRoot === root.scanRoot
     console.log("omadisk: open", root.scanRoot, "rescan=" + (payload.rescan === true))
-    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
     if (root.offerHome)
       return
     startViewProc(root.scanRoot, root.focusPath)
@@ -711,13 +699,12 @@ Item {
       height: parent.height - Style.space(22) - Style.space(18) - Style.space(8) * 2
       spacing: Style.space(16)
 
-      SunburstView {
+      SunburstCanvas {
         id: sunburst
-        width: Math.min(parent.height, parent.width * 0.52)
+        width: Math.min(parent.height, parent.width * 0.5)
         height: parent.height
         overlay: root
         foreground: root.foreground
-        fadeOpacity: root.sunburstFade
         onWidthChanged: root.relayoutSlices()
         onHeightChanged: root.relayoutSlices()
       }

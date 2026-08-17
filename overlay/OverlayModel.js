@@ -52,73 +52,83 @@ function hexRgb(hex) {
   }
 }
 
-function heatColor(t) {
-  var x = Number(t)
-  if (!isFinite(x)) x = 0
-  if (x < 0) x = 0
-  if (x > 1) x = 1
-  var stops = [
-    { t: 0.00, c: hexRgb("#2ee36a") },
-    { t: 0.35, c: hexRgb("#ffd23a") },
-    { t: 0.65, c: hexRgb("#ff8a1f") },
-    { t: 1.00, c: hexRgb("#ff3b30") }
-  ]
-  var i = 0
-  while (i < stops.length - 1 && x > stops[i + 1].t) i++
-  var a = stops[i]
-  var b = stops[Math.min(i + 1, stops.length - 1)]
-  var span = b.t - a.t
-  var u = span <= 0 ? 0 : (x - a.t) / span
-  var r = Math.round(lerp(a.c.r, b.c.r, u))
-  var g = Math.round(lerp(a.c.g, b.c.g, u))
-  var bl = Math.round(lerp(a.c.b, b.c.b, u))
-  return "#" + [r, g, bl].map(function(n) {
-    var h = n.toString(16)
+var PALETTE = [
+  "#3B82F6",
+  "#22C55E",
+  "#F59E0B",
+  "#EF4444",
+  "#A855F7",
+  "#06B6D4",
+  "#F97316",
+  "#EC4899",
+  "#84CC16",
+  "#14B8A6"
+]
+var OTHER_FILL = "#64748B"
+
+function rgbToHex(r, g, b) {
+  return "#" + [r, g, b].map(function(n) {
+    var v = Math.max(0, Math.min(255, Math.round(n)))
+    var h = v.toString(16)
     return h.length === 1 ? "0" + h : h
   }).join("")
+}
+
+function mixHex(hex, toward, t) {
+  var a = hexRgb(hex)
+  var b = hexRgb(toward)
+  return rgbToHex(lerp(a.r, b.r, t), lerp(a.g, b.g, t), lerp(a.b, b.b, t))
+}
+
+function folderFill(kind, ring, paletteIndex) {
+  if (kind === "other") return OTHER_FILL
+  var base = PALETTE[((paletteIndex % PALETTE.length) + PALETTE.length) % PALETTE.length]
+  if (ring <= 1) return base
+  if (ring === 2) return mixHex(base, "#0b0f14", 0.18)
+  return mixHex(base, "#0b0f14", 0.32)
 }
 
 function layoutSlices(view, startAtDeg, geom) {
   if (!view || !isFinite(view.bytes)) return []
   var out = []
-  layoutNode(view, 1, startAtDeg, 360, view.bytes, geom, out)
+  layoutNode(view, 1, startAtDeg, 360, geom, out, 0)
   return out
 }
 
-function layoutNode(node, ring, startDeg, parentSweep, parentBytes, geom, out) {
+function layoutNode(node, ring, startDeg, parentSweep, geom, out, inheritedPalette) {
   if (ring > 3 || parentSweep <= 0) return
   var children = node.children || []
   var childTotal = 0
   for (var i = 0; i < children.length; i++) childTotal += Number(children[i].bytes) || 0
-  if (parentBytes <= 0 || childTotal <= 0) return
+  if (childTotal <= 0) return
 
+  var gap = Math.min(Number(geom.sliceGapDeg) || 0.5, 1.2)
   var cursor = startDeg
   for (var j = 0; j < children.length; j++) {
     var c = children[j]
     var raw = parentSweep * ((Number(c.bytes) || 0) / childTotal)
-    var gap = Math.min(geom.sliceGapDeg, raw * 0.25)
-    var usable = raw - gap
+    var usable = Math.max(0, raw - gap)
     var sliceStart = cursor + gap / 2
-    if (usable >= geom.minSweepDeg || c.kind === "other") {
-      var innerR = geom.hubRadius + (ring - 1) * (geom.ringWidth + geom.ringPad)
-      var outerR = innerR + geom.ringWidth
-      var slicePath = c.kind === "other"
-        ? (c.path || otherPath(node.path))
-        : (c.path || "")
+    var paletteIndex = ring === 1 ? j : inheritedPalette
+    var innerR = geom.hubRadius + (ring - 1) * (geom.ringWidth + geom.ringPad)
+    var outerR = innerR + geom.ringWidth
+    var slicePath = c.kind === "other" ? (c.path || otherPath(node.path)) : (c.path || "")
+    if (usable >= 0.45 || c.kind === "other") {
       out.push({
         path: slicePath,
-        name: c.name,
-        kind: c.kind,
-        bytes: c.bytes,
+        name: c.name || "",
+        kind: c.kind || "",
+        bytes: Number(c.bytes) || 0,
         ring: ring,
         startDeg: sliceStart,
-        sweepDeg: Math.max(usable, c.kind === "other" ? usable : geom.minSweepDeg),
+        sweepDeg: usable,
         innerR: innerR,
         outerR: outerR,
-        color: heatColor(Math.log(1 + c.bytes) / Math.log(1 + parentBytes)),
-        drillable: c.kind === "dir" && c.bytes > 0 && !isOtherPath(slicePath)
+        fill: folderFill(c.kind, ring, paletteIndex),
+        drillable: c.kind === "dir" && (Number(c.bytes) || 0) > 0 && !isOtherPath(slicePath)
       })
-      layoutNode(c, ring + 1, sliceStart, usable, c.bytes, geom, out)
+      if (c.kind === "dir")
+        layoutNode(c, ring + 1, sliceStart, usable, geom, out, paletteIndex)
     }
     cursor += raw
   }
@@ -203,10 +213,63 @@ function findSliceIndex(model, ring, path) {
 }
 
 function hasSlicePath(model, path) {
+  if (!model) return false
+  if (Object.prototype.toString.call(model) === "[object Array]") {
+    for (var a = 0; a < model.length; a++) {
+      if (model[a].path === path) return true
+    }
+    return false
+  }
   for (var i = 0; i < model.count; i++) {
     if (model.get(i).path === path) return true
   }
   return false
+}
+
+function fillForPath(slices, path) {
+  for (var i = 0; i < (slices || []).length; i++) {
+    if (slices[i].path === path) return slices[i].fill
+  }
+  return ""
+}
+
+function sliceByPath(slices, path) {
+  for (var i = 0; i < (slices || []).length; i++) {
+    if (slices[i].path === path) return slices[i]
+  }
+  return null
+}
+
+function hitTestSlices(x, y, cx, cy, slices, hubR) {
+  var dx = x - cx, dy = y - cy
+  var r = Math.sqrt(dx * dx + dy * dy)
+  var list = slices || []
+  var innerHub = Number(hubR) || 0
+  var outer = innerHub
+  for (var i = 0; i < list.length; i++) {
+    if (Number(list[i].outerR) > outer) outer = Number(list[i].outerR)
+    if (Number(list[i].innerR) > 0 && (innerHub <= 0 || Number(list[i].innerR) < innerHub))
+      innerHub = Number(list[i].innerR)
+  }
+  if (outer <= 1) return { kind: "miss" }
+  if (r < innerHub) return { kind: "hub" }
+  if (r > outer + 4) return { kind: "miss" }
+  var deg = Math.atan2(dy, dx) * 180 / Math.PI
+  if (deg < 0) deg += 360
+  var best = null
+  var bestDist = 1e9
+  for (var j = 0; j < list.length; j++) {
+    var s = list[j]
+    if (!angleContains(s.startDeg, s.sweepDeg, deg)) continue
+    var mid = ((Number(s.innerR) || 0) + (Number(s.outerR) || 0)) / 2
+    var dist = Math.abs(r - mid)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = s
+    }
+  }
+  if (best) return { kind: "slice", slice: best }
+  return { kind: "miss" }
 }
 
 function replaceSliceModel(model, slices) {

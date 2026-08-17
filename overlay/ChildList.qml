@@ -1,14 +1,15 @@
 import QtQuick
 import qs.Commons
 import "Format.js" as Format
+import "OverlayModel.js" as Model
 
 Item {
   id: root
 
   property var overlay: null
   property color foreground: Color.popups.text
-  property color selectedBackground: Util.alpha(Color.accent, 0.28)
-  property int rowHeight: Math.max(Style.space(24), Style.font.body + Style.space(8))
+  property color selectedBackground: Util.alpha(Color.accent, 0.22)
+  property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.space(10))
 
   function pageRows() {
     return Math.max(1, Math.floor(list.height / rowHeight))
@@ -26,7 +27,7 @@ Item {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     model: overlay ? overlay.listRows : []
-    spacing: 1
+    spacing: 2
 
     delegate: Item {
       required property var modelData
@@ -39,6 +40,7 @@ Item {
         void overlay.hoverTick
         return overlay.hoverPath === modelData.path || overlay.selectedIndex === index
       }
+      readonly property string swatch: overlay ? (Model.fillForPath(overlay.slices, modelData.path) || "") : ""
 
       Rectangle {
         anchors.fill: parent
@@ -47,17 +49,19 @@ Item {
       }
 
       Rectangle {
-        width: 3
-        height: parent.height - Style.space(8)
-        radius: 1
+        width: Style.space(8)
+        height: Style.space(8)
+        radius: width / 2
         anchors.left: parent.left
+        anchors.leftMargin: Style.space(8)
         anchors.verticalCenter: parent.verticalCenter
-        color: parent.active ? Color.accent : "transparent"
+        color: parent.swatch || Util.alpha(root.foreground, 0.25)
+        opacity: parent.active ? 1 : 0.85
       }
 
       Row {
         anchors.fill: parent
-        anchors.leftMargin: Style.space(12)
+        anchors.leftMargin: Style.space(22)
         anchors.rightMargin: Style.space(6)
         spacing: Style.space(8)
 
@@ -77,7 +81,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: Format.bytes(modelData.bytes)
           color: root.foreground
-          opacity: active ? 0.8 : 0.5
+          opacity: active ? 0.85 : 0.48
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
         }
@@ -104,7 +108,7 @@ Item {
       Text {
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
-        anchors.leftMargin: Style.space(12)
+        anchors.leftMargin: Style.space(22)
         color: root.foreground
         opacity: 0.4
         font.family: Style.font.family
