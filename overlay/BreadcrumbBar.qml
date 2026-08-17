@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Ui
 import "OverlayModel.js" as Model
 
 Item {
@@ -7,8 +8,9 @@ Item {
 
   property var overlay: null
   property color foreground: Color.popups.text
-  implicitHeight: Style.space(28)
+  implicitHeight: Math.max(Style.space(32), rescanButton.implicitHeight)
 
+  readonly property bool scanning: overlay && overlay.scanning
   readonly property var crumbs: {
     if (!overlay || !overlay.scanRoot) return []
     var rootPath = overlay.scanRoot
@@ -33,68 +35,100 @@ Item {
     return parts
   }
 
-  Row {
-    anchors.fill: parent
-    spacing: Style.space(2)
+  Flickable {
+    id: crumbFlick
+    anchors.left: parent.left
+    anchors.right: rescanButton.left
+    anchors.rightMargin: Style.space(10)
+    anchors.verticalCenter: parent.verticalCenter
+    height: parent.height
+    contentWidth: crumbRow.implicitWidth
+    contentHeight: height
+    clip: true
+    flickableDirection: Flickable.HorizontalFlick
+    boundsBehavior: Flickable.StopAtBounds
 
-    Repeater {
-      model: root.crumbs
+    Row {
+      id: crumbRow
+      height: parent.height
+      spacing: Style.space(2)
 
-      Item {
-        required property var modelData
-        required property int index
-        height: parent.height
-        width: crumbRow.implicitWidth + Style.space(10)
+      Repeater {
+        model: root.crumbs
 
-        readonly property bool current: index === root.crumbs.length - 1
-        readonly property bool clickable: modelData.path !== "" && !current
+        Item {
+          required property var modelData
+          required property int index
+          height: parent.height
+          width: crumbInner.implicitWidth + Style.space(10)
 
-        Rectangle {
-          anchors.fill: parent
-          radius: Style.cornerRadius
-          color: crumbMouse.containsMouse && parent.clickable
-            ? Util.alpha(root.foreground, 0.1)
-            : "transparent"
-        }
+          readonly property bool current: index === root.crumbs.length - 1
+          readonly property bool clickable: modelData.path !== "" && !current
 
-        Row {
-          id: crumbRow
-          anchors.centerIn: parent
-          spacing: Style.space(6)
-
-          Text {
-            visible: index > 0
-            text: "/"
-            color: root.foreground
-            opacity: 0.28
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            anchors.verticalCenter: parent.verticalCenter
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.cornerRadius
+            color: crumbMouse.containsMouse && parent.clickable
+              ? Util.alpha(root.foreground, 0.1)
+              : "transparent"
           }
 
-          Text {
-            text: modelData.label
-            color: root.foreground
-            opacity: current ? 0.92 : (crumbMouse.containsMouse ? 0.85 : 0.5)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            font.bold: current
-            anchors.verticalCenter: parent.verticalCenter
-          }
-        }
+          Row {
+            id: crumbInner
+            anchors.centerIn: parent
+            spacing: Style.space(6)
 
-        MouseArea {
-          id: crumbMouse
-          anchors.fill: parent
-          hoverEnabled: true
-          enabled: parent.clickable
-          cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-          onPressed: {
-            if (overlay && modelData.path)
-              overlay.drill(modelData.path)
+            Text {
+              visible: index > 0
+              text: "/"
+              color: root.foreground
+              opacity: 0.28
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+              text: modelData.label
+              color: root.foreground
+              opacity: current ? 0.92 : (crumbMouse.containsMouse ? 0.85 : 0.5)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              font.bold: current
+              anchors.verticalCenter: parent.verticalCenter
+            }
+          }
+
+          MouseArea {
+            id: crumbMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: parent.clickable
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onPressed: {
+              if (overlay && modelData.path)
+                overlay.drill(modelData.path)
+            }
           }
         }
       }
     }
+  }
+
+  Button {
+    id: rescanButton
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    text: root.scanning ? "Scanning" : "Rescan"
+    iconText: "󰑓"
+    iconSpinning: root.scanning
+    tooltipText: root.scanning ? "Scan in progress" : "Rescan this folder (r)"
+    foreground: root.foreground
+    fontFamily: Style.font.family
+    fontSize: Style.font.caption
+    iconSize: Style.font.body
+    bordered: true
+    enabled: overlay && !root.scanning
+    onClicked: if (overlay) overlay.startScan({ cancelLive: true })
   }
 }

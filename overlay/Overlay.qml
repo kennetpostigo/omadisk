@@ -712,7 +712,7 @@ Item {
 
     BreadcrumbBar {
       width: parent.width
-      height: Style.space(28)
+      height: Style.space(32)
       overlay: root
       foreground: root.foreground
       z: 2
@@ -720,7 +720,7 @@ Item {
 
     Row {
       width: parent.width
-      height: parent.height - Style.space(28) - Style.space(18) - Style.space(8) * 2
+      height: parent.height - Style.space(32) - Style.space(18) - Style.space(8) * 2
       spacing: Style.space(16)
 
       SunburstCanvas {
