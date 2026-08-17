@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Shapes
 import qs.Commons
 import "OverlayModel.js" as Model
 
@@ -30,7 +29,7 @@ Item {
       required property int index
       anchors.fill: parent
       overlay: root.overlay
-      slice: overlay.sliceModel.get(index)
+      sliceIndex: index
       cx: root.cx
       cy: root.cy
     }
@@ -62,10 +61,8 @@ Item {
         overlay.syncSelection(hit.slice.path)
         cursorShape = hit.slice.kind === "dir" ? Qt.PointingHandCursor : Qt.ArrowCursor
       } else if (hit.kind === "hub") {
-        overlay.hoverPath = overlay.focusPath
+        overlay.syncSelection(overlay.focusPath)
         cursorShape = Qt.PointingHandCursor
-      } else {
-        cursorShape = Qt.ArrowCursor
       }
     }
     onPressed: function(mouse) {
@@ -78,6 +75,5 @@ Item {
       if (hit.kind === "slice")
         overlay.activatePath(hit.slice.path)
     }
-    onExited: if (overlay) overlay.hoverPath = ""
   }
 }

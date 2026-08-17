@@ -20,6 +20,7 @@ Item {
   property var currentView: null
   property var listRows: []
   property string hoverPath: ""
+  property int hoverTick: 0
   property int selectedIndex: 0
   property bool scanning: false
   property bool cachePublished: false
@@ -46,7 +47,7 @@ Item {
   property real cacheFinishedAt: 0
 
   readonly property color foreground: bar ? bar.foreground : Color.popups.text
-  readonly property color selectedBackground: Style.hoverFillFor(foreground, Color.accent)
+  readonly property color selectedBackground: Util.alpha(Color.accent, 0.28)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property bool hoverHasSlice: Model.hasSlicePath(sliceModel, hoverPath)
   readonly property bool hoverIsListRow: Model.isListRowPath(listRows, hoverPath)
@@ -241,6 +242,7 @@ Item {
 
   function syncSelection(path) {
     root.hoverPath = path || ""
+    root.hoverTick += 1
     if (!path) return
     for (var i = 0; i < root.listRows.length; i++) {
       if (root.listRows[i].path === path) {

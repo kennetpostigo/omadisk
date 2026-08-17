@@ -58,10 +58,10 @@ function heatColor(t) {
   if (x < 0) x = 0
   if (x > 1) x = 1
   var stops = [
-    { t: 0.00, c: hexRgb("#6a9a7c") },
-    { t: 0.40, c: hexRgb("#c4b07a") },
-    { t: 0.75, c: hexRgb("#c4845a") },
-    { t: 1.00, c: hexRgb("#b86a64") }
+    { t: 0.00, c: hexRgb("#2ee36a") },
+    { t: 0.35, c: hexRgb("#ffd23a") },
+    { t: 0.65, c: hexRgb("#ff8a1f") },
+    { t: 1.00, c: hexRgb("#ff3b30") }
   ]
   var i = 0
   while (i < stops.length - 1 && x > stops[i + 1].t) i++

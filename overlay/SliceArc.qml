@@ -5,36 +5,44 @@ import qs.Commons
 Item {
   id: root
 
-  property var slice: ({})
   property var overlay: null
+  property int sliceIndex: 0
   property real cx: 0
   property real cy: 0
 
+  readonly property var live: {
+    if (overlay) void overlay.hoverTick
+    return overlay && overlay.sliceModel ? overlay.sliceModel.get(sliceIndex) : null
+  }
+  readonly property string slicePath: live && live.path ? String(live.path) : ""
+  readonly property string sliceKind: live && live.kind ? String(live.kind) : ""
+  readonly property int sliceRing: live ? Number(live.ring) || 0 : 0
+  readonly property real startDeg: live ? Number(live.startDeg) || 0 : 0
+  readonly property real sweepDeg: live ? Number(live.sweepDeg) || 0 : 0
+  readonly property real innerR: live ? Number(live.innerR) || 0 : 0
+  readonly property real outerR: live ? Number(live.outerR) || 0 : 0
+  readonly property color sliceColor: live && live.color ? String(live.color) : "#2ee36a"
+
   readonly property bool hovered: {
-    if (!overlay || !slice || !slice.path) return false
-    if (slice.path === overlay.hoverPath) return true
-    var ring1Other = overlay.currentView
-      ? String(overlay.currentView.path || "") + "/\0other"
-      : ""
-    if (slice.kind === "other" && slice.ring === 1 && slice.path === ring1Other) {
-      if (overlay.hoverPath === "" || overlay.hoverPath === overlay.focusPath)
-        return false
+    if (!overlay || !slicePath) return false
+    void overlay.hoverTick
+    if (slicePath === overlay.hoverPath) return true
+    if (sliceKind === "other" && sliceRing === 1)
       return overlay.hoverIsListRow && !overlay.hoverHasSlice
-    }
     return false
   }
 
-  readonly property real midR: ((slice.innerR || 0) + (slice.outerR || 0)) / 2
-  readonly property real thickness: (slice.outerR || 0) - (slice.innerR || 0)
+  readonly property real midR: (innerR + outerR) / 2
+  readonly property real thickness: Math.max(0, outerR - innerR)
 
   Shape {
     anchors.fill: parent
     preferredRendererType: Shape.CurveRenderer
-    opacity: overlay && overlay.hoverPath !== "" && !root.hovered ? 0.42 : 1
+    opacity: overlay && overlay.hoverPath !== "" && !root.hovered ? 0.55 : 1
 
     ShapePath {
       strokeWidth: root.thickness
-      strokeColor: slice.color || "#3daf6b"
+      strokeColor: root.sliceColor
       fillColor: "transparent"
       capStyle: ShapePath.FlatCap
       PathAngleArc {
@@ -42,13 +50,13 @@ Item {
         centerY: root.cy
         radiusX: root.midR
         radiusY: root.midR
-        startAngle: slice.startDeg || 0
-        sweepAngle: slice.sweepDeg || 0
+        startAngle: root.startDeg
+        sweepAngle: root.sweepDeg
       }
     }
 
     ShapePath {
-      strokeWidth: root.thickness + 2
+      strokeWidth: root.thickness + 3
       strokeColor: root.hovered ? Color.accent : "transparent"
       fillColor: "transparent"
       capStyle: ShapePath.FlatCap
@@ -57,8 +65,8 @@ Item {
         centerY: root.cy
         radiusX: root.midR
         radiusY: root.midR
-        startAngle: slice.startDeg || 0
-        sweepAngle: slice.sweepDeg || 0
+        startAngle: root.startDeg
+        sweepAngle: root.sweepDeg
       }
     }
   }
