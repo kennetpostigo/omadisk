@@ -19,4 +19,7 @@ fi
 echo "== manifest json =="
 python3 -c "import json; json.load(open('manifest.json'))"
 
+echo "== overlay model =="
+node tests/overlay_model_test.js
+
 echo "ok"

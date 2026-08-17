@@ -23,7 +23,7 @@ Item {
   Column {
     anchors.centerIn: parent
     width: parent.width * 0.8
-    spacing: Style.space(8)
+    spacing: Style.space(4)
 
     Text {
       width: parent.width
@@ -31,7 +31,7 @@ Item {
       color: overlay && overlay.error ? Color.urgent : root.foreground
       opacity: 0.8
       font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.displayLarge
+      font.pixelSize: Style.font.title
       horizontalAlignment: Text.AlignHCenter
     }
 
@@ -41,7 +41,7 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       color: overlay && overlay.error ? Color.urgent : root.foreground
       font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.title
+      font.pixelSize: Style.font.body
       text: {
         if (!overlay) return ""
         if (overlay.error) return overlay.error

@@ -232,6 +232,8 @@ function hasSlicePath(model, path) {
 }
 
 function fillForPath(slices, path) {
+  // Exact path only. Folders collapsed into Other must not inherit Other's fill
+  // or they look like the same slice in the list.
   for (var i = 0; i < (slices || []).length; i++) {
     if (slices[i].path === path) return slices[i].fill
   }

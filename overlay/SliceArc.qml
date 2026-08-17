@@ -26,10 +26,7 @@ Item {
   readonly property bool hovered: {
     if (!overlay || !slicePath) return false
     void overlay.hoverTick
-    if (slicePath === overlay.hoverPath) return true
-    if (sliceKind === "other" && sliceRing === 1)
-      return overlay.hoverIsListRow && !overlay.hoverHasSlice
-    return false
+    return slicePath === overlay.hoverPath
   }
 
   readonly property real midR: (innerR + outerR) / 2
@@ -38,7 +35,7 @@ Item {
   Shape {
     anchors.fill: parent
     preferredRendererType: Shape.CurveRenderer
-    opacity: overlay && overlay.hoverPath !== "" && !root.hovered ? 0.55 : 1
+    opacity: overlay && overlay.hoverHasSlice && !root.hovered ? 0.55 : 1
 
     ShapePath {
       strokeWidth: root.thickness

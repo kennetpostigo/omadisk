@@ -9,7 +9,7 @@ Item {
   property var overlay: null
   property color foreground: Color.popups.text
   property color selectedBackground: Util.alpha(Color.accent, 0.22)
-  property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.space(10))
+  property int rowHeight: Math.max(Style.space(20), Style.font.body + Style.space(4))
 
   function pageRows() {
     return Math.max(1, Math.floor(list.height / rowHeight))
@@ -27,7 +27,7 @@ Item {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     model: overlay ? overlay.listRows : []
-    spacing: 2
+    spacing: 1
 
     delegate: Item {
       required property var modelData
@@ -49,21 +49,21 @@ Item {
       }
 
       Rectangle {
-        width: Style.space(8)
-        height: Style.space(8)
+        width: Style.space(6)
+        height: Style.space(6)
         radius: width / 2
         anchors.left: parent.left
-        anchors.leftMargin: Style.space(8)
+        anchors.leftMargin: Style.space(6)
         anchors.verticalCenter: parent.verticalCenter
-        color: parent.swatch || Util.alpha(root.foreground, 0.25)
-        opacity: parent.active ? 1 : 0.85
+        color: parent.swatch || Util.alpha(root.foreground, 0.22)
+        opacity: parent.active ? 1 : 0.8
       }
 
       Row {
         anchors.fill: parent
-        anchors.leftMargin: Style.space(22)
-        anchors.rightMargin: Style.space(6)
-        spacing: Style.space(8)
+        anchors.leftMargin: Style.space(16)
+        anchors.rightMargin: Style.space(4)
+        spacing: Style.space(6)
 
         Text {
           anchors.verticalCenter: parent.verticalCenter
@@ -108,7 +108,7 @@ Item {
       Text {
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
-        anchors.leftMargin: Style.space(22)
+        anchors.leftMargin: Style.space(16)
         color: root.foreground
         opacity: 0.4
         font.family: Style.font.family

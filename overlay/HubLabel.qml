@@ -39,7 +39,7 @@ Item {
       }
       color: root.foreground
       font.family: Style.font.family
-      font.pixelSize: Style.font.title
+      font.pixelSize: root.width < Style.space(88) ? Style.font.body : Style.font.title
       font.bold: true
       horizontalAlignment: Text.AlignHCenter
       elide: Text.ElideRight

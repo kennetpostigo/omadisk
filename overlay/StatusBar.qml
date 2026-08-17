@@ -7,7 +7,7 @@ Item {
 
   property var overlay: null
   property color foreground: Color.popups.text
-  implicitHeight: Style.space(18)
+  implicitHeight: Style.space(14)
 
   readonly property string text: {
     if (!overlay) return ""

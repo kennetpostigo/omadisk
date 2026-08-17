@@ -13,8 +13,8 @@ Item {
   readonly property real cx: width / 2
   readonly property real cy: height / 2
   readonly property real hubR: overlay && overlay.slices && overlay.slices.length
-    ? Number(overlay.slices[0].innerR) || (0.36 * size / 2)
-    : 0.36 * size / 2
+    ? Number(overlay.slices[0].innerR) || (0.34 * size / 2)
+    : 0.34 * size / 2
 
   function paint() { canvas.requestPaint() }
 
@@ -43,16 +43,15 @@ Item {
       if (!overlay) return
       var slices = overlay.slices || []
       var hover = overlay.hoverPath || ""
-      var other = overlay.currentView ? Model.otherPath(overlay.currentView.path) : ""
-      var listOnly = overlay.hoverIsListRow && !overlay.hoverHasSlice
       var i
+      // A list row that was collapsed into Other does not own that wedge.
+      // Highlight only the slice whose path matches hoverPath.
       function isActive(slice) {
-        if (slice.path === hover) return true
-        return listOnly && slice.kind === "other" && slice.ring === 1 && slice.path === other
+        return !!hover && slice.path === hover
       }
       for (i = 0; i < slices.length; i++)
         drawSlice(ctx, slices[i], isActive(slices[i]))
-      if (hover || listOnly) {
+      if (overlay.hoverHasSlice) {
         for (i = 0; i < slices.length; i++) {
           if (isActive(slices[i]))
             drawSlice(ctx, slices[i], true)
@@ -73,7 +72,7 @@ Item {
     ctx.arc(cx, cy, inner, a1, a0, true)
     ctx.closePath()
     ctx.fillStyle = active ? Model.mixHex(slice.fill || "#64748B", "#ffffff", 0.22) : (slice.fill || "#64748B")
-    ctx.globalAlpha = !overlay.hoverPath || active ? 1 : 0.42
+    ctx.globalAlpha = !overlay.hoverHasSlice || active ? 1 : 0.42
     ctx.fill()
     ctx.globalAlpha = 1
     if (active) {

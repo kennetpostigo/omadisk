@@ -88,13 +88,13 @@ Item {
 
   function geom() {
     var size = Math.min(sunburst.width, sunburst.height)
-    if (!(size > 8)) size = Style.space(240)
+    if (!(size > 8)) size = Style.space(200)
     return {
       sliceGapDeg: 0.6,
       minSweepDeg: 2.0,
-      hubRadius: 0.36 * size / 2,
-      ringWidth: 0.19 * size / 2,
-      ringPad: Math.max(2, size * 0.012)
+      hubRadius: 0.34 * size / 2,
+      ringWidth: 0.20 * size / 2,
+      ringPad: Math.max(1, size * 0.01)
     }
   }
 
@@ -708,11 +708,12 @@ Item {
   Column {
     id: column
     anchors.fill: parent
-    spacing: Style.space(8)
+    spacing: Style.space(4)
 
     BreadcrumbBar {
+      id: crumbs
       width: parent.width
-      height: Style.space(32)
+      height: implicitHeight
       overlay: root
       foreground: root.foreground
       z: 2
@@ -720,12 +721,12 @@ Item {
 
     Row {
       width: parent.width
-      height: parent.height - Style.space(32) - Style.space(18) - Style.space(8) * 2
-      spacing: Style.space(16)
+      height: parent.height - crumbs.height - statusBar.height - column.spacing * 2
+      spacing: Style.space(8)
 
       SunburstCanvas {
         id: sunburst
-        width: Math.min(parent.height, parent.width * 0.5)
+        width: Math.min(parent.height, Math.round(parent.width * 0.44))
         height: parent.height
         overlay: root
         foreground: root.foreground
@@ -744,6 +745,7 @@ Item {
     }
 
     StatusBar {
+      id: statusBar
       width: parent.width
       overlay: root
       foreground: root.foreground

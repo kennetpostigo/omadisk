@@ -8,7 +8,7 @@ Item {
 
   property var overlay: null
   property color foreground: Color.popups.text
-  implicitHeight: Math.max(Style.space(32), rescanButton.implicitHeight)
+  implicitHeight: Math.max(Style.space(24), rescanButton.implicitHeight)
 
   readonly property bool scanning: overlay && overlay.scanning
   readonly property var crumbs: {
@@ -39,7 +39,7 @@ Item {
     id: crumbFlick
     anchors.left: parent.left
     anchors.right: rescanButton.left
-    anchors.rightMargin: Style.space(10)
+    anchors.rightMargin: Style.space(6)
     anchors.verticalCenter: parent.verticalCenter
     height: parent.height
     contentWidth: crumbRow.implicitWidth
@@ -60,7 +60,7 @@ Item {
           required property var modelData
           required property int index
           height: parent.height
-          width: crumbInner.implicitWidth + Style.space(10)
+          width: crumbInner.implicitWidth + Style.space(6)
 
           readonly property bool current: index === root.crumbs.length - 1
           readonly property bool clickable: modelData.path !== "" && !current
@@ -76,7 +76,7 @@ Item {
           Row {
             id: crumbInner
             anchors.centerIn: parent
-            spacing: Style.space(6)
+            spacing: Style.space(4)
 
             Text {
               visible: index > 0
@@ -126,7 +126,9 @@ Item {
     foreground: root.foreground
     fontFamily: Style.font.family
     fontSize: Style.font.caption
-    iconSize: Style.font.body
+    iconSize: Style.font.caption
+    horizontalPadding: Style.space(8)
+    verticalPadding: Style.space(3)
     bordered: true
     enabled: overlay && !root.scanning
     onClicked: if (overlay) overlay.startScan({ cancelLive: true })
