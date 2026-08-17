@@ -12,14 +12,14 @@
   },
   "barWidget": {
     "displayName": "Disk space",
-    "description": "Hard-disk icon and free space. Click to open Omadisk.",
+    "description": "Hard-disk icon. Click to open Omadisk.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
       "root": "",
       "refreshIntervalSec": 30,
-      "showFree": true
+      "showFree": false
     },
     "schema": [
       {
@@ -41,7 +41,7 @@
         "key": "showFree",
         "type": "boolean",
         "label": "Show available space next to icon",
-        "defaultValue": true
+        "defaultValue": false
       }
     ]
   }

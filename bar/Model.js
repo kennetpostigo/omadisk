@@ -34,11 +34,7 @@ function availableText(stat) {
 }
 
 function chipText(stat, showAvailable, vertical) {
-  var icon = chipIcon()
-  if (vertical) return icon
-  var free = availableText(stat)
-  if (!showAvailable || !free) return icon
-  return icon + " " + free
+  return chipIcon()
 }
 
 function chipTooltip(stat, rootPath) {
