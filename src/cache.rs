@@ -447,6 +447,32 @@ mod tests {
         let _ = fs::remove_dir_all(&cache);
     }
 
+    #[test]
+    fn key_differs_by_stay_on_fs_and_hardlink_flag() {
+        let a = cache_key("/home/x", "allocated", true, true);
+        let b = cache_key("/home/x", "allocated", false, true);
+        let c = cache_key("/home/x", "allocated", true, false);
+        assert_ne!(a, b);
+        assert_ne!(a, c);
+        assert_eq!(a.len(), 16);
+    }
+
+    #[test]
+    fn publish_then_load_roundtrip() {
+        let cache = temp_cache();
+        let meta = json!({"v":1,"root":"/t","finishedAt":1});
+        let tree = json!({"v":1,"root":"/t","nodes":{}});
+        let dir = publish_scan(&cache, "abcdabcdabcdabcd", &meta, &tree).unwrap();
+        assert_eq!(
+            fs::metadata(&dir).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        let loaded = load_scan(&cache, "abcdabcdabcdabcd").unwrap();
+        assert_eq!(loaded.0["root"], "/t");
+        assert_eq!(loaded.1["root"], "/t");
+        let _ = fs::remove_dir_all(&cache);
+    }
+
     fn filetime_set(path: &Path, when: SystemTime) -> io::Result<()> {
         let ts = filetime_from_system(when);
         let times = [ts, ts];

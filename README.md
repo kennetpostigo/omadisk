@@ -1,75 +1,92 @@
 # Omadisk
 
-DaisyDisk-like disk-usage explorer for [Omarchy](https://omarchy.org) — a used/free bar chip whose panel peeks out from the bar (same chrome as Network and Display).
+A DaisyDisk-like disk usage explorer for [Omarchy](https://omarchy.org). A hard-disk icon on the bar opens a panel that peeks out underneath — sunburst map, folder list, breadcrumbs — using the same chrome as Network and Display.
 
-Plugin id: `postman.omadisk`. The overlay never walks the filesystem; a Rust scanner child streams a capped NDJSON view.
+Plugin id: `postman.omadisk`. The UI never walks the filesystem. A Rust scanner child streams a capped NDJSON view.
 
-## Build
+## Install
 
-Requires [mise](https://mise.jdx.dev/) (this repo pins `rust = "stable"`).
+Needs [mise](https://mise.jdx.dev/) (or a Rust toolchain) so the scanner can be built. `omarchy plugin add` does not compile.
 
-```bash
+```sh
+git clone https://github.com/kennetpostigo/omadisk.git
+cd omadisk
 mise install
-./scripts/build.sh          # mise exec -- cargo build --release
+./scripts/build.sh
+omarchy plugin add "$(pwd)" --enable --yes
 ```
 
-`omarchy plugin add` does **not** compile. After clone, run the two commands above so `target/release/omadisk-scan` exists.
+Or after the repo is public:
 
-## Install (this machine / development)
-
-```bash
-./scripts/dev-install.sh    # build, symlink into ~/.config/omarchy/plugins, enable --section right
-./scripts/install-menu.sh   # optional Trigger → Disk Usage
-./scripts/dev-watch.sh &    # QML live-reload (host inotify does not follow the symlink)
-```
-
-Published install:
-
-```bash
-git clone <url> && cd omadisk
+```sh
+omarchy plugin add https://github.com/kennetpostigo/omadisk.git --enable
+cd ~/.config/omarchy/plugins/postman.omadisk
 mise install && ./scripts/build.sh
-omarchy plugin add . --enable --yes
+omarchy-shell shell rescanPlugins
 ```
 
-The plugin is a `bar-widget`. Enable it onto the bar (right section by default):
+Place the chip:
 
-```bash
+```sh
 omarchy plugin enable postman.omadisk --section right
 ```
 
-## Open
+Optional menu entry:
 
-Click the **Disk space** chip — the explorer peeks out under the bar, like Network or Display.
+```sh
+./scripts/install-menu.sh
+```
 
-```bash
+## Usage
+
+Click the disk icon on the bar. Escape closes (or goes up one folder first).
+
+```sh
 omarchy-shell shell toggle postman.omadisk
-omarchy-shell shell summon postman.omadisk
 ```
-
-Also: Omarchy menu → Trigger → Disk Usage (after `install-menu.sh`).
-
-Optional Super bind (user file only — check `omarchy menu keybindings --print` first; Super+Shift+D is Docker):
-
-```lua
--- ~/.config/hypr/bindings.lua
-o.bind("SUPER + SHIFT + U", "Omadisk", "omarchy-shell shell toggle postman.omadisk")
-```
-
-## Keyboard
 
 | Key | Action |
 | --- | --- |
-| `j` / `k` / arrows | Move in the child list |
-| `l` / Enter / Right | Drill into a directory |
-| `h` / Left / Backspace | Go up |
-| Esc | Go up, or dismiss at the scan root |
-| `r` | Rescan the current root |
-| `o` | Open the focused path (`xdg-open`) |
-| `y` | Copy the focused path (`wl-copy`) |
+| `j` / `k` / arrows | Move in the list |
+| `l` / Enter | Drill into a folder |
+| `h` / Backspace | Go up |
+| Esc | Go up, or close at the scan root |
+| `r` | Rescan |
+| `o` | Open the focused path |
+| `y` | Copy the focused path |
 
-v1 is **read-only**. There is no delete, trash, or collect.
+v1 is **read-only**. There is no delete or trash.
 
-## Scanner
+## Configure
+
+```sh
+omarchy bar move postman.omadisk --section right
+```
+
+Optional scan root (empty = `$HOME`) via the widget settings schema `root`.
+
+## Remove
+
+```sh
+omarchy plugin disable postman.omadisk
+omarchy plugin remove postman.omadisk --yes
+# if you used a local symlink instead:
+rm -f ~/.config/omarchy/plugins/postman.omadisk
+# optional: drop trigger.omadisk from ~/.config/omarchy/extensions/omarchy-menu.jsonc
+rm -rf ~/.cache/omadisk
+pkill -f omadisk-scan || true
+```
+
+## Development
+
+```sh
+mise install
+./scripts/test.sh
+./scripts/dev-install.sh
+./scripts/dev-watch.sh &
+```
+
+Scanner:
 
 ```
 ./target/release/omadisk-scan proto
@@ -80,23 +97,13 @@ v1 is **read-only**. There is no delete, trash, or collect.
 
 Defaults: allocated size (`st_blocks * 512`), stay on one filesystem, count hardlinks once, do not follow directory symlinks, skip `/proc /dev /sys /run`. Cache: `~/.cache/omadisk/` (`0700` / `0600`). Protocol: [`protocol.md`](protocol.md).
 
-```bash
-mise exec -- cargo test
-```
-
 ## Security
 
-- Third-party plugins run **unsandboxed inside `omarchy-shell`** (same as every other plugin).
-- The scanner is a nicened child of the shell. It only `stat`s / `scandir`s the chosen root and writes under `~/.cache/omadisk/`.
-- Cache lists every path under the scan root — treat it as private (`0700`/`0600`).
-- `o` / `y` only ever act on a path the walker produced.
+- Plugins run **unsandboxed inside `omarchy-shell`**.
+- The scanner only `stat`s / `scandir`s the chosen root and writes under `~/.cache/omadisk/`.
+- It does not read file contents or write into the scanned tree.
+- Cache lists every path under the scan root — treat it as private.
 
-## Rollback
+## License
 
-```bash
-omarchy plugin disable postman.omadisk
-rm -f ~/.config/omarchy/plugins/postman.omadisk
-# drop trigger.omadisk from ~/.config/omarchy/extensions/omarchy-menu.jsonc
-rm -rf ~/.cache/omadisk
-pkill -f omadisk-scan || true
-```
+MIT. See [LICENSE](LICENSE).

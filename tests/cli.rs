@@ -3,6 +3,7 @@ use std::fs;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 
 fn bin() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_omadisk-scan"))
@@ -361,4 +362,114 @@ fn scan_missing_root_is_exit_2() {
     let missing = p.tmp.join("missing");
     let out = p.run(&["scan", "--root", &missing.to_string_lossy()]);
     assert_eq!(out.status.code(), Some(2));
+}
+
+#[test]
+fn scan_does_not_mutate_source_tree() {
+    let p = Probe::new();
+    let mut before = Vec::new();
+    fn collect(dir: &Path, out: &mut Vec<(PathBuf, u64, SystemTime)>) {
+        for ent in fs::read_dir(dir).unwrap() {
+            let ent = ent.unwrap();
+            let path = ent.path();
+            let md = fs::symlink_metadata(&path).unwrap();
+            out.push((path.clone(), md.len(), md.modified().unwrap()));
+            if md.is_dir() && !md.file_type().is_symlink() {
+                collect(&path, out);
+            }
+        }
+    }
+    collect(&p.root, &mut before);
+    let out = p.run(&[
+        "scan",
+        "--root",
+        &p.root.to_string_lossy(),
+        "--emit-view-ms",
+        "0",
+    ]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let mut after = Vec::new();
+    collect(&p.root, &mut after);
+    before.sort_by(|a, b| a.0.cmp(&b.0));
+    after.sort_by(|a, b| a.0.cmp(&b.0));
+    assert_eq!(before, after);
+    let cache_files: Vec<_> = fs::read_dir(p.cache.join("scans"))
+        .unwrap()
+        .flatten()
+        .collect();
+    assert!(!cache_files.is_empty());
+}
+
+#[test]
+fn stat_reports_ok_for_existing_path() {
+    let p = Probe::new();
+    let out = p.run(&["stat", "--path", &p.root.to_string_lossy()]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let ev = parse_line(
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .next()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(ev["type"], "stat");
+    assert_eq!(ev["ok"], true);
+    assert!(ev["total"].as_u64().unwrap() > 0);
+}
+
+#[test]
+fn view_nested_directory() {
+    let p = Probe::new();
+    assert_eq!(
+        p.run(&[
+            "scan",
+            "--root",
+            &p.root.to_string_lossy(),
+            "--emit-view-ms",
+            "0",
+        ])
+        .status
+        .code(),
+        Some(0)
+    );
+    let nested = p.root.join("a");
+    let view = p.run(&[
+        "view",
+        "--root",
+        &p.root.to_string_lossy(),
+        "--path",
+        &nested.to_string_lossy(),
+    ]);
+    assert_eq!(
+        view.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&view.stderr)
+    );
+    let ev = parse_line(
+        String::from_utf8_lossy(&view.stdout)
+            .lines()
+            .next()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(ev["path"], nested.to_string_lossy().as_ref());
+    assert!(ev["list"].as_array().unwrap().len() >= 3);
+}
+
+#[test]
+fn usage_is_exit_1() {
+    let p = Probe::new();
+    let out = p.run(&["not-a-command"]);
+    assert_eq!(out.status.code(), Some(1));
 }

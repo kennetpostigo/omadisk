@@ -828,4 +828,101 @@ mod tests {
             .any(|p| p == &root.join("b").join("c").join("d").to_string_lossy()));
         let _ = fs::remove_dir_all(&tmp);
     }
+
+    #[test]
+    fn apparent_uses_st_size() {
+        let tmp = unique_tmp("omadisk-walk");
+        let root = tmp.join("root");
+        fs::create_dir_all(&root).unwrap();
+        write_exact(&root.join("sparseish"), 4096);
+        let mut allocated = Walker::new(&root);
+        allocated.walk().unwrap();
+        let mut apparent = Walker::new(&root);
+        apparent.metric = Metric::Apparent;
+        apparent.walk().unwrap();
+        let file_a = child_by_name(&allocated.tree, allocated.tree.root_node(), "sparseish").unwrap();
+        let file_b = child_by_name(&apparent.tree, apparent.tree.root_node(), "sparseish").unwrap();
+        assert_eq!(file_b.bytes, 4096);
+        assert_eq!(file_b.apparent, 4096);
+        assert_eq!(file_a.apparent, 4096);
+        assert!(file_a.bytes >= file_a.apparent || file_a.bytes > 0);
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn count_hardlinks_counts_twice() {
+        let tmp = unique_tmp("omadisk-walk");
+        let root = make_tiny_tree(&tmp);
+        let mut walker = Walker::new(&root);
+        walker.count_hardlinks = true;
+        walker.walk().unwrap();
+        let hard = child_by_name(&walker.tree, walker.tree.root_node(), "hard").unwrap();
+        assert_ne!(hard.kind, "hardlink");
+        assert!(hard.bytes > 0);
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn not_a_directory_errors() {
+        let tmp = unique_tmp("omadisk-walk");
+        let file = tmp.join("file");
+        write_exact(&file, 8);
+        let mut walker = Walker::new(&file);
+        assert!(walker.walk().is_err());
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn cycle_skip_when_inode_repeats_on_stack() {
+        let tmp = unique_tmp("omadisk-walk");
+        let root = tmp.join("root");
+        fs::create_dir_all(root.join("loop")).unwrap();
+        let root_s = root.clone();
+        let loop_s = root.join("loop");
+        let mut walker = Walker::new(&root);
+        walker.stat_fn = Some(Box::new(move |path, follow| {
+            let mut st = default_stat(path, follow)?;
+            if path == loop_s.as_path() {
+                let root_st = default_stat(&root_s, true)?;
+                st.dev = root_st.dev;
+                st.ino = root_st.ino;
+            }
+            Ok(st)
+        }));
+        use std::cell::RefCell;
+        use std::rc::Rc;
+        let skips = Rc::new(RefCell::new(Vec::new()));
+        let skips2 = skips.clone();
+        walker.on_skip = Some(Box::new(move |_p, r| skips2.borrow_mut().push(r.to_string())));
+        walker.walk().unwrap();
+        assert!(skips.borrow().iter().any(|r| r == "cycle"));
+        let loop_node = child_by_name(&walker.tree, walker.tree.root_node(), "loop");
+        assert!(loop_node.is_none() || loop_node.unwrap().children.is_empty());
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn empty_directory_is_zero_children() {
+        let tmp = unique_tmp("omadisk-walk");
+        let root = tmp.join("empty");
+        fs::create_dir_all(&root).unwrap();
+        let mut walker = Walker::new(&root);
+        walker.walk().unwrap();
+        assert!(walker.tree.root_node().children.is_empty());
+        assert_eq!(walker.dirs, 1);
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn extra_ignore_prefix() {
+        let tmp = unique_tmp("omadisk-walk");
+        let root = make_tiny_tree(&tmp);
+        let ignored = root.join("b").to_string_lossy().into_owned();
+        let mut walker = Walker::new(&root);
+        walker.ignore = vec![ignored];
+        walker.walk().unwrap();
+        assert!(child_by_name(&walker.tree, walker.tree.root_node(), "b").is_none());
+        assert!(child_by_name(&walker.tree, walker.tree.root_node(), "a").is_some());
+        let _ = fs::remove_dir_all(&tmp);
+    }
 }

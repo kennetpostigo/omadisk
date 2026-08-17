@@ -1064,5 +1064,26 @@ mod tests {
             "/home/x/.cache"
         );
         assert_eq!(remap_cached_path("/var", "/", "/"), "/var");
+        assert_eq!(
+            remap_cached_path("/home/x/missing", "/home/x", "/home/x"),
+            "/home/x/missing"
+        );
+    }
+
+    #[test]
+    fn other_path_is_parent_nul_other() {
+        assert_eq!(other_path("/home"), format!("/home{OTHER_SUFFIX}"));
+        assert!(other_path("/a") != other_path("/b"));
+        assert!(other_path("/a").ends_with("/\0other"));
+    }
+
+    #[test]
+    fn file_child_not_in_nodes_still_lists() {
+        let file = file_node("/t/f", "f", 42);
+        let (tree, _) = dir_node("/t", "t", vec![file], None);
+        let ev = build_view(&MemoryTree::new(tree), "/t", &ViewOpts::default());
+        assert_eq!(ev["list"][0]["kind"], "file");
+        assert_eq!(ev["list"][0]["bytes"], 42);
+        assert_eq!(ev["children"][0]["kind"], "file");
     }
 }

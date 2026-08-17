@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test scanner
+        run: cargo test
+      - name: Manifest is JSON
+        run: python3 -c "import json,sys; json.load(open('manifest.json'))"
+      - name: Required files
+        run: |
+          test -f LICENSE
+          test -f README.md
+          test -f protocol.md
+          test -f bar/BarWidget.qml
+          test -f overlay/Overlay.qml
