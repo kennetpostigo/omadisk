@@ -18,6 +18,7 @@ Item {
   }
 
   visible: show
+  z: 4
 
   Column {
     anchors.centerIn: parent

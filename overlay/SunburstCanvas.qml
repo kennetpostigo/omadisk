@@ -24,6 +24,7 @@ Item {
   Connections {
     target: overlay
     function onHoverTickChanged() { canvas.requestPaint() }
+    function onHoverPathChanged() { canvas.requestPaint() }
     function onSlicesChanged() { canvas.requestPaint() }
     function onFocusPathChanged() { canvas.requestPaint() }
   }
@@ -42,12 +43,18 @@ Item {
       if (!overlay) return
       var slices = overlay.slices || []
       var hover = overlay.hoverPath || ""
+      var other = overlay.currentView ? Model.otherPath(overlay.currentView.path) : ""
+      var listOnly = overlay.hoverIsListRow && !overlay.hoverHasSlice
       var i
+      function isActive(slice) {
+        if (slice.path === hover) return true
+        return listOnly && slice.kind === "other" && slice.ring === 1 && slice.path === other
+      }
       for (i = 0; i < slices.length; i++)
-        drawSlice(ctx, slices[i], slices[i].path === hover)
-      if (hover) {
+        drawSlice(ctx, slices[i], isActive(slices[i]))
+      if (hover || listOnly) {
         for (i = 0; i < slices.length; i++) {
-          if (slices[i].path === hover)
+          if (isActive(slices[i]))
             drawSlice(ctx, slices[i], true)
         }
       }
@@ -94,6 +101,7 @@ Item {
     anchors.fill: parent
     hoverEnabled: true
     preventStealing: true
+    enabled: !(overlay && overlay.offerHome && (!overlay.slices || overlay.slices.length === 0))
     cursorShape: Qt.ArrowCursor
     onPositionChanged: function(mouse) {
       if (!overlay) return
@@ -104,10 +112,16 @@ Item {
       } else if (hit.kind === "hub") {
         overlay.syncSelection(overlay.focusPath)
         cursorShape = Qt.PointingHandCursor
+      } else {
+        cursorShape = Qt.ArrowCursor
       }
     }
     onPressed: function(mouse) {
       if (!overlay) return
+      if (overlay.offerHome) {
+        overlay.fallBackHome()
+        return
+      }
       var hit = Model.hitTestSlices(mouse.x, mouse.y, root.cx, root.cy, overlay.slices, root.hubR)
       if (hit.kind === "hub") {
         overlay.goUp()

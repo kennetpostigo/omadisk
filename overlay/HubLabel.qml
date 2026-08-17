@@ -15,6 +15,11 @@ Item {
     void overlay.hoverTick
     if (!overlay.hoverPath) return null
     if (overlay.hoverSlice) return overlay.hoverSlice
+    var rows = overlay.listRows || []
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].path === overlay.hoverPath)
+        return { name: rows[i].name, bytes: rows[i].bytes }
+    }
     if (view && view.path === overlay.hoverPath)
       return { name: view.name, bytes: view.bytes }
     return null

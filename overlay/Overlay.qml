@@ -90,7 +90,8 @@ Item {
     var size = Math.min(sunburst.width, sunburst.height)
     if (!(size > 8)) size = Style.space(240)
     return {
-      sliceGapDeg: 0.7,
+      sliceGapDeg: 0.6,
+      minSweepDeg: 2.0,
       hubRadius: 0.36 * size / 2,
       ringWidth: 0.19 * size / 2,
       ringPad: Math.max(2, size * 0.012)
@@ -247,7 +248,8 @@ Item {
   function activatePath(path) {
     if (!path) return
     if (Model.isOtherPath(path)) {
-      syncSelection(path)
+      if (path === Model.otherPath(root.focusPath))
+        syncSelection(path)
       return
     }
     syncSelection(path)
@@ -299,11 +301,12 @@ Item {
 
   function drill(path) {
     if (Model.isOtherPath(path)) {
-      syncSelection(path)
+      if (path === Model.otherPath(root.focusPath))
+        syncSelection(path)
       return
     }
     if (!path) return
-    if (pathKind(path) && pathKind(path) !== "dir") {
+    if (pathKind(path) !== "dir") {
       syncSelection(path)
       return
     }
@@ -471,6 +474,10 @@ Item {
     root.focusPath = root.scanRoot
     persistSession()
     startViewProc(root.scanRoot, root.focusPath)
+  }
+
+  function pageRows() {
+    return childList ? childList.pageRows() : 8
   }
 
   function moveSelection(delta) {

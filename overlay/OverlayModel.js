@@ -102,34 +102,39 @@ function layoutNode(node, ring, startDeg, parentSweep, geom, out, inheritedPalet
   for (var i = 0; i < children.length; i++) childTotal += Number(children[i].bytes) || 0
   if (childTotal <= 0) return
 
-  var gap = Math.min(Number(geom.sliceGapDeg) || 0.5, 1.2)
   var cursor = startDeg
+  var minSweep = Number(geom.minSweepDeg)
+  if (!isFinite(minSweep) || minSweep <= 0) minSweep = 2
   for (var j = 0; j < children.length; j++) {
     var c = children[j]
     var raw = parentSweep * ((Number(c.bytes) || 0) / childTotal)
+    var gap = Math.min(Number(geom.sliceGapDeg) || 0.5, raw * 0.25)
     var usable = Math.max(0, raw - gap)
+    if (c.kind === "other") usable = Math.max(usable, minSweep * 0.5)
+    if (usable < minSweep && c.kind !== "other") {
+      cursor += raw
+      continue
+    }
     var sliceStart = cursor + gap / 2
     var paletteIndex = ring === 1 ? j : inheritedPalette
     var innerR = geom.hubRadius + (ring - 1) * (geom.ringWidth + geom.ringPad)
     var outerR = innerR + geom.ringWidth
     var slicePath = c.kind === "other" ? (c.path || otherPath(node.path)) : (c.path || "")
-    if (usable >= 0.45 || c.kind === "other") {
-      out.push({
-        path: slicePath,
-        name: c.name || "",
-        kind: c.kind || "",
-        bytes: Number(c.bytes) || 0,
-        ring: ring,
-        startDeg: sliceStart,
-        sweepDeg: usable,
-        innerR: innerR,
-        outerR: outerR,
-        fill: folderFill(c.kind, ring, paletteIndex),
-        drillable: c.kind === "dir" && (Number(c.bytes) || 0) > 0 && !isOtherPath(slicePath)
-      })
-      if (c.kind === "dir")
-        layoutNode(c, ring + 1, sliceStart, usable, geom, out, paletteIndex)
-    }
+    out.push({
+      path: slicePath,
+      name: c.name || "",
+      kind: c.kind || "",
+      bytes: Number(c.bytes) || 0,
+      ring: ring,
+      startDeg: sliceStart,
+      sweepDeg: usable,
+      innerR: innerR,
+      outerR: outerR,
+      fill: folderFill(c.kind, ring, paletteIndex),
+      drillable: c.kind === "dir" && (Number(c.bytes) || 0) > 0 && !isOtherPath(slicePath)
+    })
+    if (c.kind === "dir" && usable >= minSweep)
+      layoutNode(c, ring + 1, sliceStart, usable, geom, out, paletteIndex)
     cursor += raw
   }
 }
@@ -253,15 +258,19 @@ function hitTestSlices(x, y, cx, cy, slices, hubR) {
   }
   if (outer <= 1) return { kind: "miss" }
   if (r < innerHub) return { kind: "hub" }
-  if (r > outer + 4) return { kind: "miss" }
+  if (r > outer + 2) return { kind: "miss" }
   var deg = Math.atan2(dy, dx) * 180 / Math.PI
   if (deg < 0) deg += 360
+  var slop = 2
   var best = null
   var bestDist = 1e9
   for (var j = 0; j < list.length; j++) {
     var s = list[j]
+    var inner = Number(s.innerR) || 0
+    var outR = Number(s.outerR) || 0
+    if (r < inner - slop || r >= outR + slop) continue
     if (!angleContains(s.startDeg, s.sweepDeg, deg)) continue
-    var mid = ((Number(s.innerR) || 0) + (Number(s.outerR) || 0)) / 2
+    var mid = (inner + outR) / 2
     var dist = Math.abs(r - mid)
     if (dist < bestDist) {
       bestDist = dist

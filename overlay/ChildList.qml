@@ -38,7 +38,7 @@ Item {
       readonly property bool active: {
         if (!overlay || !modelData) return false
         void overlay.hoverTick
-        return overlay.hoverPath === modelData.path || overlay.selectedIndex === index
+        return overlay.hoverPath === modelData.path
       }
       readonly property string swatch: overlay ? (Model.fillForPath(overlay.slices, modelData.path) || "") : ""
 
