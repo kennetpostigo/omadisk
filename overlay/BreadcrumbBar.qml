@@ -7,7 +7,7 @@ Item {
 
   property var overlay: null
   property color foreground: Color.popups.text
-  implicitHeight: Style.space(22)
+  implicitHeight: Style.space(28)
 
   readonly property var crumbs: {
     if (!overlay || !overlay.scanRoot) return []
@@ -35,27 +35,64 @@ Item {
 
   Row {
     anchors.fill: parent
-    spacing: Style.space(4)
+    spacing: Style.space(2)
 
     Repeater {
       model: root.crumbs
 
-      Text {
+      Item {
         required property var modelData
         required property int index
-        text: (index > 0 ? " / " : "") + modelData.label
-        color: root.foreground
-        opacity: index === root.crumbs.length - 1 ? 0.92 : 0.45
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
-        font.bold: index === root.crumbs.length - 1
-        anchors.verticalCenter: parent.verticalCenter
+        height: parent.height
+        width: crumbRow.implicitWidth + Style.space(10)
+
+        readonly property bool current: index === root.crumbs.length - 1
+        readonly property bool clickable: modelData.path !== "" && !current
+
+        Rectangle {
+          anchors.fill: parent
+          radius: Style.cornerRadius
+          color: crumbMouse.containsMouse && parent.clickable
+            ? Util.alpha(root.foreground, 0.1)
+            : "transparent"
+        }
+
+        Row {
+          id: crumbRow
+          anchors.centerIn: parent
+          spacing: Style.space(6)
+
+          Text {
+            visible: index > 0
+            text: "/"
+            color: root.foreground
+            opacity: 0.28
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            text: modelData.label
+            color: root.foreground
+            opacity: current ? 0.92 : (crumbMouse.containsMouse ? 0.85 : 0.5)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            font.bold: current
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
 
         MouseArea {
+          id: crumbMouse
           anchors.fill: parent
-          enabled: modelData.path !== ""
+          hoverEnabled: true
+          enabled: parent.clickable
           cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-          onClicked: if (overlay && modelData.path) overlay.drill(modelData.path)
+          onPressed: {
+            if (overlay && modelData.path)
+              overlay.drill(modelData.path)
+          }
         }
       }
     }

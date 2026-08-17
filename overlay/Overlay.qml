@@ -245,6 +245,15 @@ Item {
     }
   }
 
+  function isDrillable(path) {
+    if (!path || Model.isOtherPath(path)) return false
+    var kind = pathKind(path)
+    if (kind === "dir" || kind === "mount") return true
+    if (kind !== "") return false
+    if (path === root.scanRoot) return true
+    return !!(root.focusPath && Model.isDescendant(path, root.focusPath) && path !== root.focusPath)
+  }
+
   function activatePath(path) {
     if (!path) return
     if (Model.isOtherPath(path)) {
@@ -253,7 +262,7 @@ Item {
       return
     }
     syncSelection(path)
-    if (pathKind(path) === "dir") drill(path)
+    if (isDrillable(path)) drill(path)
   }
 
   function playFocusFade() {
@@ -306,7 +315,7 @@ Item {
       return
     }
     if (!path) return
-    if (pathKind(path) !== "dir") {
+    if (!isDrillable(path)) {
       syncSelection(path)
       return
     }
@@ -697,13 +706,15 @@ Item {
 
     BreadcrumbBar {
       width: parent.width
+      height: Style.space(28)
       overlay: root
       foreground: root.foreground
+      z: 2
     }
 
     Row {
       width: parent.width
-      height: parent.height - Style.space(22) - Style.space(18) - Style.space(8) * 2
+      height: parent.height - Style.space(28) - Style.space(18) - Style.space(8) * 2
       spacing: Style.space(16)
 
       SunburstCanvas {
