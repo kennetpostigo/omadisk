@@ -1,10 +1,40 @@
+# Rust
 /target
 **/*.rs.bk
+*.pdb
+
+# Never commit a real scan or session
+.cache/
+.omadisk/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# QML compile cache
+*.qmlc
+*.jsc
+
+# Earlier Python prototype leftovers
 __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
-.cache/
-*.swp
-.DS_Store
+.venv/
+venv/
 
+# mise / rust local overrides
+mise.local.toml
+.mise.local.toml
+
+# Logs
+*.log
