@@ -38,3 +38,8 @@ mise.local.toml
 
 # Logs
 *.log
+
+# Internal planning / design drafts — do not publish
+/DESIGN.md
+/PLAN.md
+/AGENTS.md
