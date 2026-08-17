@@ -7,39 +7,21 @@ Item {
   id: root
 
   property var overlay: null
-  property color foreground: Color.menu.text
+  property color foreground: Color.popups.text
   property real fadeOpacity: 1
 
   readonly property real sunburstSize: Math.min(width, height)
   readonly property real cx: width / 2
   readonly property real cy: height / 2
-  readonly property real hubR: 0.28 * sunburstSize / 2
-  readonly property real ringW: 0.22 * sunburstSize / 2
-  readonly property real ringPad: Style.space(2)
+  readonly property real hubR: 0.34 * sunburstSize / 2
+  readonly property real ringW: 0.18 * sunburstSize / 2
+  readonly property real ringPad: Style.space(3)
   readonly property real outerR: hubR + 3 * (ringW + ringPad)
 
   opacity: fadeOpacity
 
   Behavior on fadeOpacity {
-    NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-  }
-
-  Shape {
-    anchors.fill: parent
-    preferredRendererType: Shape.CurveRenderer
-    ShapePath {
-      strokeWidth: 1
-      strokeColor: Util.alpha(root.foreground, 0.18)
-      fillColor: "transparent"
-      PathAngleArc {
-        centerX: root.cx
-        centerY: root.cy
-        radiusX: root.hubR
-        radiusY: root.hubR
-        startAngle: 0
-        sweepAngle: 360
-      }
-    }
+    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
   }
 
   Repeater {
@@ -71,24 +53,30 @@ Item {
   MouseArea {
     anchors.fill: parent
     hoverEnabled: true
-    propagateComposedEvents: false
+    preventStealing: true
+    cursorShape: Qt.ArrowCursor
     onPositionChanged: function(mouse) {
       if (!overlay) return
       var hit = Model.hitTest(mouse.x, mouse.y, root.cx, root.cy, overlay.sliceModel, root.hubR, root.outerR)
-      if (hit.kind === "slice") overlay.hoverPath = hit.slice.path
-      else if (hit.kind === "hub") overlay.hoverPath = overlay.focusPath
-      else overlay.hoverPath = ""
+      if (hit.kind === "slice") {
+        overlay.syncSelection(hit.slice.path)
+        cursorShape = hit.slice.kind === "dir" ? Qt.PointingHandCursor : Qt.ArrowCursor
+      } else if (hit.kind === "hub") {
+        overlay.hoverPath = overlay.focusPath
+        cursorShape = Qt.PointingHandCursor
+      } else {
+        cursorShape = Qt.ArrowCursor
+      }
     }
-    onClicked: function(mouse) {
+    onPressed: function(mouse) {
       if (!overlay) return
       var hit = Model.hitTest(mouse.x, mouse.y, root.cx, root.cy, overlay.sliceModel, root.hubR, root.outerR)
       if (hit.kind === "hub") {
         overlay.goUp()
         return
       }
-      if (hit.kind === "slice") {
-        overlay.drill(hit.slice.path)
-      }
+      if (hit.kind === "slice")
+        overlay.activatePath(hit.slice.path)
     }
     onExited: if (overlay) overlay.hoverPath = ""
   }

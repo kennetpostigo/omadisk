@@ -30,7 +30,7 @@ Item {
   Shape {
     anchors.fill: parent
     preferredRendererType: Shape.CurveRenderer
-    opacity: overlay && overlay.hoverPath !== "" && !root.hovered ? 0.72 : 1
+    opacity: overlay && overlay.hoverPath !== "" && !root.hovered ? 0.42 : 1
 
     ShapePath {
       strokeWidth: root.thickness

@@ -6,72 +6,52 @@ Item {
   id: root
 
   property var overlay: null
-  property color foreground: Color.menu.text
-  implicitHeight: Style.space(28)
+  property color foreground: Color.popups.text
+  implicitHeight: Style.space(18)
 
-  readonly property string leftText: {
+  readonly property string text: {
     if (!overlay) return ""
-    if (overlay.error)
-      return overlay.error
+    if (overlay.error) return overlay.error
     if (overlay.scanning) {
       var p = overlay.progress || {}
-      return "Scanning… " + Format.count(p.files || 0) + " files · " + Format.bytes(p.bytes || 0)
+      return "scanning · " + Format.bytes(p.bytes || 0)
     }
-    if (overlay.cacheAgeSec >= 0) {
-      var age = "Scanned " + Format.relativeTime(overlay.cacheAgeSec)
-      if (overlay.cacheAgeSec >= 86400)
-        return age + " — press r to refresh"
-      return age
-    }
-    return overlay.partial ? "Partial view" : ""
+    var parts = []
+    if (overlay.diskStat && overlay.diskStat.ok)
+      parts.push(Format.bytes(overlay.diskStat.free) + " free")
+    if (overlay.cacheAgeSec >= 0)
+      parts.push(Format.relativeTime(overlay.cacheAgeSec))
+    return parts.join("  ·  ")
   }
 
-  readonly property string rightText: {
-    if (!overlay || !overlay.diskStat || !overlay.diskStat.ok) return ""
-    var s = overlay.diskStat
-    var label = overlay.isHomeRoot() ? "Home" : (overlay.scanRoot || "")
-    return label + " · " + Format.bytes(overlay.currentView ? overlay.currentView.bytes : 0)
-      + " analyzed · " + Format.bytes(s.free) + " free on disk"
+  Text {
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    width: parent.width - rescan.implicitWidth - Style.space(12)
+    text: root.text
+    color: overlay && overlay.error ? Color.urgent : root.foreground
+    opacity: overlay && overlay.error ? 1 : 0.4
+    font.family: Style.font.family
+    font.pixelSize: Style.font.caption
+    elide: Text.ElideRight
   }
 
-  Row {
-    anchors.fill: parent
-    spacing: Style.space(12)
-
-    Text {
-      width: parent.width * 0.45
-      anchors.verticalCenter: parent.verticalCenter
-      text: root.leftText
-      color: overlay && overlay.error ? Color.urgent : root.foreground
-      opacity: overlay && overlay.error ? 1 : 0.7
-      font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.caption
-      elide: Text.ElideRight
-    }
-
-    Text {
-      width: parent.width * 0.38
-      anchors.verticalCenter: parent.verticalCenter
-      text: root.rightText
-      color: root.foreground
-      opacity: 0.7
-      font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.caption
-      elide: Text.ElideRight
-      horizontalAlignment: Text.AlignRight
-    }
-
-    Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: "Rescan"
-      color: Color.accent
-      font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.caption
-      MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: if (overlay) overlay.startScan({ cancelLive: true })
-      }
+  Text {
+    id: rescan
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    text: "↻"
+    color: root.foreground
+    opacity: rescanMouse.containsMouse ? 0.9 : 0.35
+    font.family: Style.font.family
+    font.pixelSize: Style.font.body
+    MouseArea {
+      id: rescanMouse
+      anchors.fill: parent
+      anchors.margins: -Style.space(4)
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: if (overlay) overlay.startScan({ cancelLive: true })
     }
   }
 }

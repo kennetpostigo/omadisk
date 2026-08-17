@@ -84,15 +84,27 @@ Item {
     return root.scanRoot === homeDir()
   }
 
+  property real lastLayoutSize: 0
+
   function geom() {
     var size = Math.min(sunburst.width, sunburst.height)
+    if (!(size > 8)) size = Style.space(240)
     return {
-      sliceGapDeg: 0.4,
-      minSweepDeg: 2.0,
-      hubRadius: 0.28 * size / 2,
-      ringWidth: 0.22 * size / 2,
-      ringPad: Style.space(2)
+      sliceGapDeg: 0.35,
+      minSweepDeg: 1.6,
+      hubRadius: 0.34 * size / 2,
+      ringWidth: 0.18 * size / 2,
+      ringPad: Style.space(3)
     }
+  }
+
+  function relayoutSlices() {
+    var size = Math.min(sunburst.width, sunburst.height)
+    if (!(size > 8) || !root.currentView) return
+    if (Math.abs(size - root.lastLayoutSize) < 0.5) return
+    root.lastLayoutSize = size
+    var nextSlices = Model.layoutSlices(root.currentView, -90, geom())
+    Model.replaceSliceModel(sliceModelRef, nextSlices)
   }
 
   function niceIoniceConcat(args) {
@@ -207,12 +219,46 @@ Item {
     }
     if (root.selectedIndex >= nextList.length)
       root.selectedIndex = Math.max(0, nextList.length - 1)
-    var hoverOk = false
-    for (var i = 0; i < nextList.length; i++) {
-      if (nextList[i].path === root.hoverPath) { hoverOk = true; break }
+    root.lastLayoutSize = Math.min(sunburst.width, sunburst.height)
+    syncSelection(root.hoverPath || (nextList.length ? nextList[root.selectedIndex].path : ""))
+  }
+
+  function pathKind(path) {
+    var i
+    for (i = 0; i < root.listRows.length; i++) {
+      if (root.listRows[i].path === path) return root.listRows[i].kind || ""
     }
-    if (!hoverOk && !Model.hasSlicePath(sliceModelRef, root.hoverPath))
-      root.hoverPath = nextList.length ? nextList[root.selectedIndex].path : ""
+    if (root.currentView) {
+      var node = Model.findNode(root.currentView, path)
+      if (node && node.kind) return node.kind
+    }
+    for (i = 0; i < sliceModelRef.count; i++) {
+      var s = sliceModelRef.get(i)
+      if (s.path === path) return s.kind || ""
+    }
+    return ""
+  }
+
+  function syncSelection(path) {
+    root.hoverPath = path || ""
+    if (!path) return
+    for (var i = 0; i < root.listRows.length; i++) {
+      if (root.listRows[i].path === path) {
+        root.selectedIndex = i
+        if (childList) childList.positionSelected()
+        return
+      }
+    }
+  }
+
+  function activatePath(path) {
+    if (!path) return
+    if (Model.isOtherPath(path)) {
+      syncSelection(path)
+      return
+    }
+    syncSelection(path)
+    if (pathKind(path) === "dir") drill(path)
   }
 
   function playFocusFade() {
@@ -260,11 +306,14 @@ Item {
 
   function drill(path) {
     if (Model.isOtherPath(path)) {
-      if (path === Model.otherPath(root.focusPath))
-        root.hoverPath = path
+      syncSelection(path)
       return
     }
     if (!path) return
+    if (pathKind(path) && pathKind(path) !== "dir") {
+      syncSelection(path)
+      return
+    }
     root.focusChanging = true
     root.focusPath = path
     if (Model.inWindow(root.lastRootView, path) || Model.inWindow(root.currentView, path)) {
@@ -647,7 +696,7 @@ Item {
   Column {
     id: column
     anchors.fill: parent
-    spacing: Style.space(12)
+    spacing: Style.space(8)
 
     BreadcrumbBar {
       width: parent.width
@@ -657,8 +706,8 @@ Item {
 
     Row {
       width: parent.width
-      height: parent.height - Style.space(28) * 2 - Style.space(12) * 2
-      spacing: Style.space(12)
+      height: parent.height - Style.space(22) - Style.space(18) - Style.space(8) * 2
+      spacing: Style.space(16)
 
       SunburstView {
         id: sunburst
@@ -667,6 +716,8 @@ Item {
         overlay: root
         foreground: root.foreground
         fadeOpacity: root.sunburstFade
+        onWidthChanged: root.relayoutSlices()
+        onHeightChanged: root.relayoutSlices()
       }
 
       ChildList {

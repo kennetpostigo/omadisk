@@ -6,10 +6,8 @@ Item {
   id: root
 
   property var overlay: null
-  property color foreground: Color.menu.text
-  property int rowHeight: Style.space(28)
-
-  implicitHeight: rowHeight
+  property color foreground: Color.popups.text
+  implicitHeight: Style.space(22)
 
   readonly property var crumbs: {
     if (!overlay || !overlay.scanRoot) return []
@@ -30,50 +28,34 @@ Item {
         parts.push({ path: acc, label: segs[i] })
       }
     }
-    if (parts.length > 5) {
+    if (parts.length > 4)
       return [parts[0], { path: "", label: "…" }].concat(parts.slice(parts.length - 2))
-    }
     return parts
   }
 
   Row {
-    id: row
     anchors.fill: parent
-    spacing: Style.space(6)
+    spacing: Style.space(4)
 
     Repeater {
       model: root.crumbs
 
-      Row {
+      Text {
         required property var modelData
         required property int index
-        spacing: Style.space(6)
+        text: (index > 0 ? " / " : "") + modelData.label
+        color: root.foreground
+        opacity: index === root.crumbs.length - 1 ? 0.92 : 0.45
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        font.bold: index === root.crumbs.length - 1
+        anchors.verticalCenter: parent.verticalCenter
 
-        Text {
-          visible: index > 0
-          text: "/"
-          color: root.foreground
-          opacity: 0.4
-          font.family: Style.font.menuFamily
-          font.pixelSize: Style.font.body
-          anchors.verticalCenter: parent.verticalCenter
-        }
-
-        Text {
-          text: modelData.label
-          color: index === root.crumbs.length - 1 ? root.foreground : root.foreground
-          opacity: index === root.crumbs.length - 1 ? 1 : 0.7
-          font.family: Style.font.menuFamily
-          font.pixelSize: Style.font.body
-          font.bold: index === root.crumbs.length - 1
-          anchors.verticalCenter: parent.verticalCenter
-
-          MouseArea {
-            anchors.fill: parent
-            enabled: modelData.path !== ""
-            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: if (overlay) overlay.drill(modelData.path)
-          }
+        MouseArea {
+          anchors.fill: parent
+          enabled: modelData.path !== ""
+          cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+          onClicked: if (overlay && modelData.path) overlay.drill(modelData.path)
         }
       }
     }

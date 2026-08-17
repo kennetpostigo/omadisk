@@ -58,10 +58,10 @@ function heatColor(t) {
   if (x < 0) x = 0
   if (x > 1) x = 1
   var stops = [
-    { t: 0.00, c: hexRgb("#3daf6b") },
-    { t: 0.35, c: hexRgb("#c9b458") },
-    { t: 0.65, c: hexRgb("#d8883b") },
-    { t: 1.00, c: hexRgb("#c94c4c") }
+    { t: 0.00, c: hexRgb("#6a9a7c") },
+    { t: 0.40, c: hexRgb("#c4b07a") },
+    { t: 0.75, c: hexRgb("#c4845a") },
+    { t: 1.00, c: hexRgb("#b86a64") }
   ]
   var i = 0
   while (i < stops.length - 1 && x > stops[i + 1].t) i++
@@ -237,24 +237,49 @@ function samePathSet(a, b) {
   return true
 }
 
+function angleContains(startDeg, sweepDeg, deg) {
+  var start = ((Number(startDeg) % 360) + 360) % 360
+  var sweep = Number(sweepDeg) || 0
+  var end = start + sweep
+  if (end <= 360) return deg >= start && deg < end
+  return deg >= start || deg < (end - 360)
+}
+
 function hitTest(x, y, cx, cy, model, hubR, outerR) {
   var dx = x - cx, dy = y - cy
   var r = Math.sqrt(dx * dx + dy * dy)
-  if (r < hubR) return { kind: "hub" }
-  if (r > outerR) return { kind: "miss" }
+  var pad = 6
+  var effectiveHub = Number(hubR) || 0
+  var effectiveOuter = Number(outerR) || 0
+  if (model && model.count > 0) {
+    var minI = 1e9
+    var maxO = 0
+    for (var i = 0; i < model.count; i++) {
+      var bounds = model.get(i)
+      if (Number(bounds.innerR) < minI) minI = Number(bounds.innerR)
+      if (Number(bounds.outerR) > maxO) maxO = Number(bounds.outerR)
+    }
+    if (minI < 1e9 && minI > 0) effectiveHub = minI
+    if (maxO > 0) effectiveOuter = maxO
+  }
+  if (effectiveOuter <= 1) return { kind: "miss" }
+  if (r < effectiveHub) return { kind: "hub" }
+  if (r > effectiveOuter + pad) return { kind: "miss" }
   var deg = Math.atan2(dy, dx) * 180 / Math.PI
   if (deg < 0) deg += 360
-  for (var i = 0; i < model.count; i++) {
-    var s = model.get(i)
-    if (r < s.innerR || r >= s.outerR) continue
-    var start = ((s.startDeg % 360) + 360) % 360
-    var end = start + s.sweepDeg
-    if (end <= 360) {
-      if (deg >= start && deg < end) return { kind: "slice", slice: s }
-    } else {
-      if (deg >= start || deg < (end - 360)) return { kind: "slice", slice: s }
+  var best = null
+  var bestDist = 1e9
+  for (var j = 0; j < model.count; j++) {
+    var s = model.get(j)
+    if (!angleContains(s.startDeg, s.sweepDeg, deg)) continue
+    var mid = ((Number(s.innerR) || 0) + (Number(s.outerR) || 0)) / 2
+    var dist = Math.abs(r - mid)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = s
     }
   }
+  if (best) return { kind: "slice", slice: best }
   return { kind: "miss" }
 }
 

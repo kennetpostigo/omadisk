@@ -6,9 +6,9 @@ Item {
   id: root
 
   property var overlay: null
-  property color foreground: Color.menu.text
-  property color selectedBackground: Color.menu.selectedBackground
-  property int rowHeight: Math.max(Style.space(28), Style.font.body + Style.spacing.rowPaddingX)
+  property color foreground: Color.popups.text
+  property color selectedBackground: Style.hoverFillFor(foreground, Color.accent)
+  property int rowHeight: Math.max(Style.space(22), Style.font.body + Style.space(6))
 
   function pageRows() {
     return Math.max(1, Math.floor(list.height / rowHeight))
@@ -28,31 +28,41 @@ Item {
     model: overlay ? overlay.listRows : []
     spacing: 0
 
-    delegate: Rectangle {
+    delegate: Item {
       required property var modelData
       required property int index
       width: list.width
       height: root.rowHeight
-      radius: Style.cornerRadius
-      color: {
-        if (!overlay) return "transparent"
-        if (overlay.hoverPath === modelData.path || overlay.selectedIndex === index)
-          return root.selectedBackground
-        return "transparent"
+
+      readonly property bool active: overlay && (overlay.hoverPath === modelData.path || overlay.selectedIndex === index)
+
+      Rectangle {
+        width: 2
+        height: parent.height - Style.space(6)
+        radius: 1
+        anchors.verticalCenter: parent.verticalCenter
+        color: parent.active ? Color.accent : "transparent"
+      }
+
+      Rectangle {
+        anchors.fill: parent
+        color: parent.active ? root.selectedBackground : "transparent"
+        radius: Style.cornerRadius
       }
 
       Row {
         anchors.fill: parent
-        anchors.leftMargin: Style.space(8)
-        anchors.rightMargin: Style.space(8)
+        anchors.leftMargin: Style.space(10)
+        anchors.rightMargin: Style.space(4)
         spacing: Style.space(8)
 
         Text {
           anchors.verticalCenter: parent.verticalCenter
-          width: parent.width - sizeLabel.width - Style.space(16)
-          text: (modelData.error === "permission" ? "🔒 " : "") + (modelData.name || "")
+          width: parent.width - sizeLabel.width - Style.space(12)
+          text: modelData.name || ""
           color: root.foreground
-          font.family: Style.font.menuFamily
+          opacity: active ? 1 : 0.72
+          font.family: Style.font.family
           font.pixelSize: Style.font.body
           elide: Text.ElideRight
         }
@@ -62,8 +72,8 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: Format.bytes(modelData.bytes)
           color: root.foreground
-          opacity: 0.58
-          font.family: Style.font.menuFamily
+          opacity: 0.45
+          font.family: Style.font.family
           font.pixelSize: Style.font.caption
         }
       }
@@ -71,17 +81,12 @@ Item {
       MouseArea {
         anchors.fill: parent
         hoverEnabled: true
+        preventStealing: true
         cursorShape: modelData.kind === "dir" ? Qt.PointingHandCursor : Qt.ArrowCursor
-        onEntered: {
+        onEntered: if (overlay) overlay.syncSelection(modelData.path)
+        onPressed: {
           if (!overlay) return
-          overlay.hoverPath = modelData.path
-          overlay.selectedIndex = index
-        }
-        onClicked: {
-          if (!overlay) return
-          overlay.selectedIndex = index
-          overlay.hoverPath = modelData.path
-          if (modelData.kind === "dir") overlay.drill(modelData.path)
+          overlay.activatePath(modelData.path)
         }
       }
     }
@@ -91,13 +96,15 @@ Item {
       width: list.width
       height: visible ? root.rowHeight : 0
       Text {
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: Style.space(10)
         color: root.foreground
-        opacity: 0.58
-        font.family: Style.font.menuFamily
+        opacity: 0.4
+        font.family: Style.font.family
         font.pixelSize: Style.font.caption
         text: overlay && overlay.currentView
-          ? "and " + Format.count(overlay.currentView.listTruncated) + " smaller items"
+          ? "+" + Format.count(overlay.currentView.listTruncated)
           : ""
       }
     }

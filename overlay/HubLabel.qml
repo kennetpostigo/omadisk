@@ -6,37 +6,37 @@ Item {
   id: root
 
   property var overlay: null
-  property color foreground: Color.menu.text
+  property color foreground: Color.popups.text
 
   readonly property var view: overlay ? overlay.currentView : null
-  readonly property string name: {
-    if (!overlay) return ""
-    if (overlay.scanning && (!view || view.bytes === undefined)) return "Scanning…"
-    if (!view) return overlay.scanRoot ? Format.bytes(0) : ""
-    return view.name || ""
-  }
 
   Column {
     anchors.centerIn: parent
-    width: parent.width * 0.78
+    width: parent.width * 0.82
     spacing: Style.space(2)
 
     Text {
       width: parent.width
-      text: root.view ? Format.bytes(root.view.bytes) : (overlay && overlay.scanning ? "…" : "0 B")
+      text: root.view ? Format.bytes(root.view.bytes) : (overlay && overlay.scanning ? "…" : "")
       color: root.foreground
-      font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.display
+      font.family: Style.font.family
+      font.pixelSize: Style.font.title
+      font.bold: true
       horizontalAlignment: Text.AlignHCenter
       elide: Text.ElideRight
     }
 
     Text {
       width: parent.width
-      text: root.name
+      text: {
+        if (!overlay) return ""
+        if (overlay.scanning && (!root.view || root.view.bytes === undefined)) return "scanning"
+        if (!root.view) return ""
+        return root.view.name || ""
+      }
       color: root.foreground
-      opacity: 0.58
-      font.family: Style.font.menuFamily
+      opacity: 0.45
+      font.family: Style.font.family
       font.pixelSize: Style.font.caption
       horizontalAlignment: Text.AlignHCenter
       elide: Text.ElideMiddle
