@@ -37,6 +37,7 @@ Item {
         if (root.view) return Format.bytes(root.view.bytes)
         return overlay && overlay.scanning ? "…" : ""
       }
+      textFormat: Text.PlainText
       color: root.foreground
       font.family: Style.font.family
       font.pixelSize: root.width < Style.space(88) ? Style.font.body : Style.font.title
@@ -54,6 +55,7 @@ Item {
         if (!root.view) return ""
         return root.view.name || ""
       }
+      textFormat: Text.PlainText
       color: root.foreground
       opacity: 0.5
       font.family: Style.font.family

@@ -28,6 +28,7 @@ Item {
     anchors.fill: parent
     verticalAlignment: Text.AlignVCenter
     text: root.text
+    textFormat: Text.PlainText
     color: overlay && overlay.error ? Color.urgent : root.foreground
     opacity: overlay && overlay.error ? 1 : 0.4
     font.family: Style.font.family

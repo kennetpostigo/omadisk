@@ -69,6 +69,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           width: parent.width - sizeLabel.width - Style.space(12)
           text: modelData.name || ""
+          textFormat: Text.PlainText
           color: root.foreground
           opacity: active ? 1 : 0.78
           font.family: Style.font.family
@@ -80,6 +81,7 @@ Item {
           id: sizeLabel
           anchors.verticalCenter: parent.verticalCenter
           text: Format.bytes(modelData.bytes)
+          textFormat: Text.PlainText
           color: root.foreground
           opacity: active ? 0.85 : 0.48
           font.family: Style.font.family
@@ -113,6 +115,7 @@ Item {
         opacity: 0.4
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
+        textFormat: Text.PlainText
         text: overlay && overlay.currentView
           ? "+" + Format.count(overlay.currentView.listTruncated)
           : ""

@@ -70,12 +70,13 @@ Full schema: [protocol.md](protocol.md).
 
 ## Overlay invariants
 
-These are easy to regress. If you touch hover, click, breadcrumbs, or session, re-check all four.
+These are easy to regress. If you touch hover, click, breadcrumbs, session, or labels, re-check all five.
 
 1. **Shared hover.** One `hoverPath` plus `hoverTick`. Sunburst and list both read live state. Do **not** clear `hoverPath` in `onExited` on the canvas — crossing into the list would flash empty. Dim non-hovered slices; do not hide them.
 2. **Slice ↔ list.** Clicking a slice selects and drills the same path as the list row. `hitTestSlices` must match `layoutSlices` geometry (`startDeg`, `sweepDeg`, `innerR`, `outerR`).
 3. **Breadcrumbs.** Ancestors of `focusPath` are drillable even when they are not in `listRows`. `isDrillable` must treat the scan root and ancestors as folders when `pathKind` is empty.
 4. **Session.** `persistSession` updates `sessionObj` in memory **and** writes `session.json` on close. `startSession` must not reset `focusPath` to `scanRoot` when a valid descendant is stored. FileView's `sessionObj` can be stale — memory wins if it is newer.
+5. **Plain text.** Every QML `Text` must set `textFormat: Text.PlainText`. Filenames and configured paths are untrusted; AutoText would treat `<img src=…>` as rich text and fetch it from the shell process. First-party tooltips we do not own still AutoText — run those strings through `asPlainLabel` in `bar/Model.js`.
 
 Do not put a role named `color` on a QML `ListModel`. Quickshell reserves it and the sunburst goes monochrome. Folder fills live on the laid-out slice objects from `layoutSlices`.
 

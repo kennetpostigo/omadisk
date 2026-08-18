@@ -81,6 +81,7 @@ Item {
             Text {
               visible: index > 0
               text: "/"
+              textFormat: Text.PlainText
               color: root.foreground
               opacity: 0.28
               font.family: Style.font.family
@@ -90,6 +91,7 @@ Item {
 
             Text {
               text: modelData.label
+              textFormat: Text.PlainText
               color: root.foreground
               opacity: current ? 0.92 : (crumbMouse.containsMouse ? 0.85 : 0.5)
               font.family: Style.font.family

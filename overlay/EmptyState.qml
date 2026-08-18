@@ -28,6 +28,7 @@ Item {
     Text {
       width: parent.width
       text: overlay && overlay.error ? "!" : "○"
+      textFormat: Text.PlainText
       color: overlay && overlay.error ? Color.urgent : root.foreground
       opacity: 0.8
       font.family: Style.font.menuFamily
@@ -42,6 +43,7 @@ Item {
       color: overlay && overlay.error ? Color.urgent : root.foreground
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.body
+      textFormat: Text.PlainText
       text: {
         if (!overlay) return ""
         if (overlay.error) return overlay.error
@@ -56,6 +58,7 @@ Item {
       color: Color.accent
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.body
+      textFormat: Text.PlainText
       text: "Open home directory"
       MouseArea {
         anchors.fill: parent

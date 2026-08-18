@@ -37,8 +37,17 @@ function chipText(stat, showAvailable, vertical) {
   return chipIcon()
 }
 
+// Bar/Button tooltips use QML AutoText. Neutralize tag/markdown image
+// markers so a crafted configured path cannot fetch remote images.
+function asPlainLabel(s) {
+  return String(s || "")
+    .replace(/</g, "\uFF1C")
+    .replace(/>/g, "\uFF1E")
+    .replace(/!\[/g, "!\u200B[")
+}
+
 function chipTooltip(stat, rootPath) {
-  var path = String(rootPath || "")
+  var path = asPlainLabel(rootPath)
   if (!stat || !stat.ok)
     return path + " · click to open Omadisk"
   return path + " · " + bytes(stat.free) + " available · click to open Omadisk"
